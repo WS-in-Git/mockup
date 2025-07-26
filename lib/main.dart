@@ -68,6 +68,117 @@ Color _generateRandomColor() {
   );
 }
 
+// Globale Definition für die kategorisierten Artikel (Masterliste)
+late Map<String, List<Map<String, dynamic>>> _categorizedItems;
+
+// Standardartikel für die Initialisierung von _categorizedItems
+const Map<String, List<Map<String, dynamic>>> _defaultCategorizedItems = {
+  'Obst & Gemüse': [
+    {
+      'name': 'Äpfel',
+      'category': 'Obst & Gemüse',
+      'isDone': false,
+      'source': 'Ohne',
+    },
+    {
+      'name': 'Tomaten',
+      'category': 'Obst & Gemüse',
+      'isDone': false,
+      'source': 'Ohne',
+    },
+    {
+      'name': 'Gurken',
+      'category': 'Obst & Gemüse',
+      'isDone': false,
+      'source': 'Ohne',
+    },
+    {
+      'name': 'Kartoffeln',
+      'category': 'Obst & Gemüse',
+      'isDone': false,
+      'source': 'Ohne',
+    },
+    {
+      'name': 'Zwiebeln',
+      'category': 'Obst & Gemüse',
+      'isDone': false,
+      'source': 'Ohne',
+    },
+    {
+      'name': 'Knoblauch',
+      'category': 'Obst & Gemüse',
+      'isDone': false,
+      'source': 'Ohne',
+    },
+  ],
+  'Backwaren': [
+    {
+      'name': 'Brot',
+      'category': 'Backwaren',
+      'isDone': false,
+      'source': 'Ohne',
+    },
+  ],
+  'Molkereiprodukte': [
+    {
+      'name': 'Milch',
+      'category': 'Molkereiprodukte',
+      'isDone': false,
+      'source': 'Ohne',
+    },
+    {
+      'name': 'Eier',
+      'category': 'Molkereiprodukte',
+      'isDone': false,
+      'source': 'Ohne',
+    },
+    {
+      'name': 'Käse',
+      'category': 'Molkereiprodukte',
+      'isDone': false,
+      'source': 'Ohne',
+    },
+  ],
+  'Fleisch & Fisch': [
+    {
+      'name': 'Hähnchen',
+      'category': 'Fleisch & Fisch',
+      'isDone': false,
+      'source': 'Ohne',
+    },
+    {
+      'name': 'Fisch',
+      'category': 'Fleisch & Fisch',
+      'isDone': false,
+      'source': 'Ohne',
+    },
+  ],
+  'Grundnahrungsmittel': [
+    {
+      'name': 'Nudeln',
+      'category': 'Grundnahrungsmittel',
+      'isDone': false,
+      'source': 'Ohne',
+    },
+    {
+      'name': 'Reis',
+      'category': 'Grundnahrungsmittel',
+      'isDone': false,
+      'source': 'Ohne',
+    },
+  ],
+  'Gewürze': [
+    {'name': 'Salz', 'category': 'Gewürze', 'isDone': false, 'source': 'Ohne'},
+    {
+      'name': 'Pfeffer',
+      'category': 'Gewürze',
+      'isDone': false,
+      'source': 'Ohne',
+    },
+  ],
+  'Ohne': [],
+};
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -176,6 +287,36 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     }
 
+    // Kategorisierte Artikel laden
+    final String? categorizedItemsString = prefs.getString('categorizedItems');
+    if (categorizedItemsString != null) {
+      final Map<String, dynamic> decodedCategorizedItems = jsonDecode(
+        categorizedItemsString,
+      );
+      _categorizedItems = decodedCategorizedItems.map((category, itemsJson) {
+        List<Map<String, dynamic>> items = (itemsJson as List).map((itemMap) {
+          final Map<String, dynamic> parsedItem = Map<String, dynamic>.from(
+            itemMap,
+          );
+          parsedItem['isDone'] = parsedItem['isDone'] ?? false;
+          parsedItem['source'] = parsedItem['source'] ?? 'Ohne';
+          return parsedItem;
+        }).toList();
+        return MapEntry(category, items);
+      });
+      debugPrint('Kategorisierte Artikel geladen: $_categorizedItems');
+    } else {
+      _categorizedItems = Map.from(
+        _defaultCategorizedItems,
+      ); // Initialize with default if not found
+      debugPrint('Kategorisierte Artikel mit Standardwerten initialisiert.');
+    }
+
+    // Ensure 'Ohne' category is always present in _categorizedItems
+    if (!_categorizedItems.containsKey('Ohne')) {
+      _categorizedItems['Ohne'] = [];
+    }
+
     // Aktuellen Listennamen laden
     final String? currentListName = prefs.getString('currentListName');
     setState(() {
@@ -238,6 +379,10 @@ class _HomeScreenState extends State<HomeScreen> {
     final Map<String, dynamic> listsToSave = _allShoppingLists;
     await prefs.setString('allShoppingLists', jsonEncode(listsToSave));
     debugPrint('Einkaufslisten gespeichert.');
+
+    // Kategorisierte Artikel speichern
+    await prefs.setString('categorizedItems', jsonEncode(_categorizedItems));
+    debugPrint('Kategorisierte Artikel gespeichert.');
 
     // Aktuellen Listennamen speichern
     await prefs.setString('currentListName', _currentListName);
@@ -754,6 +899,8 @@ class _HomeScreenState extends State<HomeScreen> {
           onNewCategoryCreated: _addNewCategory, // Pass HomeScreen's method
           onCategoryDeleted: _deleteCategory, // Pass HomeScreen's method
           onCategoryRenamed: _renameCategory, // Pass HomeScreen's method
+          onCategorizedItemsUpdated:
+              _saveData, // Pass callback to save categorized items
         ),
       ),
     );
@@ -1214,6 +1361,34 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                   ),
                   const Divider(),
+                  // Removed the "Neuen Artikel hinzufügen" ListTile
+                  ListTile(
+                    leading: const Icon(
+                      Icons.article,
+                    ), // New icon for Article Management
+                    title: const Text('Artikel verwalten'),
+                    onTap: () async {
+                      Navigator.pop(context); // Close drawer
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ArticleManagementScreen(
+                            onNewCategoryCreated: _addNewCategory,
+                            onCategoryDeleted: _deleteCategory,
+                            onCategoryRenamed: _renameCategory,
+                            availableSources: _allSources,
+                            onNewSourceCreated: _addNewSource,
+                            onSourceDeleted: _deleteSource,
+                            onSourceRenamed: _renameSource,
+                            onCategorizedItemsUpdated:
+                                _saveData, // Pass callback to save categorized items
+                          ),
+                        ),
+                      );
+                      _loadData(); // Daten nach Rückkehr aus der Artikelverwaltung neu laden
+                    },
+                  ),
+                  const Divider(),
                   ListTile(
                     leading: const Icon(Icons.category), // Icon für Kategorien
                     title: const Text('Kategorien verwalten'),
@@ -1332,6 +1507,8 @@ class SelectionScreen extends StatefulWidget {
   onCategoryDeleted; // New: Pass category deletion callback
   final Function(String oldName, String newName, Color? newColor)
   onCategoryRenamed; // New: Pass category rename callback
+  final VoidCallback
+  onCategorizedItemsUpdated; // New: Callback to notify HomeScreen about changes to _categorizedItems
 
   const SelectionScreen({
     super.key,
@@ -1345,6 +1522,7 @@ class SelectionScreen extends StatefulWidget {
     required this.onNewCategoryCreated, // Require new parameter
     required this.onCategoryDeleted, // Require new parameter
     required this.onCategoryRenamed, // Require new parameter
+    required this.onCategorizedItemsUpdated, // Require new parameter
   });
 
   @override
@@ -1352,118 +1530,7 @@ class SelectionScreen extends StatefulWidget {
 }
 
 class _SelectionScreenState extends State<SelectionScreen> {
-  // Aktualisiert auf dynamic, um isDone zu speichern
-  Map<String, List<Map<String, dynamic>>> _categorizedItems = {
-    'Obst & Gemüse': [
-      {
-        'name': 'Äpfel',
-        'category': 'Obst & Gemüse',
-        'isDone': false,
-        'source': 'Ohne',
-      },
-      {
-        'name': 'Tomaten',
-        'category': 'Obst & Gemüse',
-        'isDone': false,
-        'source': 'Ohne',
-      },
-      {
-        'name': 'Gurken',
-        'category': 'Obst & Gemüse',
-        'isDone': false,
-        'source': 'Ohne',
-      },
-      {
-        'name': 'Kartoffeln',
-        'category': 'Obst & Gemüse',
-        'isDone': false,
-        'source': 'Ohne',
-      },
-      {
-        'name': 'Zwiebeln',
-        'category': 'Obst & Gemüse',
-        'isDone': false,
-        'source': 'Ohne',
-      },
-      {
-        'name': 'Knoblauch',
-        'category': 'Obst & Gemüse',
-        'isDone': false,
-        'source': 'Ohne',
-      },
-    ],
-    'Backwaren': [
-      {
-        'name': 'Brot',
-        'category': 'Backwaren',
-        'isDone': false,
-        'source': 'Ohne',
-      },
-    ],
-    'Molkereiprodukte': [
-      {
-        'name': 'Milch',
-        'category': 'Molkereiprodukte',
-        'isDone': false,
-        'source': 'Ohne',
-      },
-      {
-        'name': 'Eier',
-        'category': 'Molkereiprodukte',
-        'isDone': false,
-        'source': 'Ohne',
-      },
-      {
-        'name': 'Käse',
-        'category': 'Molkereiprodukte',
-        'isDone': false,
-        'source': 'Ohne',
-      },
-    ],
-    'Fleisch & Fisch': [
-      {
-        'name': 'Hähnchen',
-        'category': 'Fleisch & Fisch',
-        'isDone': false,
-        'source': 'Ohne',
-      },
-      {
-        'name': 'Fisch',
-        'category': 'Fleisch & Fisch',
-        'isDone': false,
-        'source': 'Ohne',
-      },
-    ],
-    'Grundnahrungsmittel': [
-      {
-        'name': 'Nudeln',
-        'category': 'Grundnahrungsmittel',
-        'isDone': false,
-        'source': 'Ohne',
-      },
-      {
-        'name': 'Reis',
-        'category': 'Grundnahrungsmittel',
-        'isDone': false,
-        'source': 'Ohne',
-      },
-    ],
-    'Gewürze': [
-      {
-        'name': 'Salz',
-        'category': 'Gewürze',
-        'isDone': false,
-        'source': 'Ohne',
-      },
-      {
-        'name': 'Pfeffer',
-        'category': 'Gewürze',
-        'isDone': false,
-        'source': 'Ohne',
-      },
-    ],
-    'Ohne': [],
-  };
+  // _categorizedItems ist jetzt global definiert und wird nicht mehr hier verwaltet.
 
   late String _selectedCategory;
   late ScrollController _scrollController;
@@ -1571,6 +1638,8 @@ class _SelectionScreenState extends State<SelectionScreen> {
       debugPrint(
         'Neuer Artikel hinzugefügt: $name in Kategorie $category von $source',
       );
+      widget
+          .onCategorizedItemsUpdated(); // Notify HomeScreen to save global _categorizedItems
     });
   }
 
@@ -1873,50 +1942,28 @@ class _SelectionScreenState extends State<SelectionScreen> {
             IconButton(
               icon: const Icon(Icons.add, color: Colors.white, size: 30),
               onPressed: () async {
-                debugPrint('BottomAppBar "Neuen Artikel hinzufügen" getippt.');
-                final Map<String, dynamic>?
-                newArticleResult = await Navigator.push(
+                debugPrint(
+                  'BottomAppBar "Neuen Artikel hinzufügen" getippt. Navigiere zu Artikel verwalten.',
+                );
+                await Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => NewArticleScreen(
-                      onSave: (name, category, source) {
-                        // Callback mit Source-Parameter
-                        _addNewArticle(name, category, source);
-                      },
-                      // availableCategories: _categoryColors.keys.toList(), // No longer needed
-                      availableSources:
-                          widget.availableSources, // Pass available sources
+                    builder: (context) => ArticleManagementScreen(
+                      onNewCategoryCreated: widget.onNewCategoryCreated,
+                      onCategoryDeleted: widget.onCategoryDeleted,
+                      onCategoryRenamed: widget.onCategoryRenamed,
+                      availableSources: widget.availableSources,
                       onNewSourceCreated: widget.onNewSourceCreated,
-                      onSourceDeleted:
-                          widget.onSourceDeleted, // Pass source delete callback
-                      onSourceRenamed:
-                          widget.onSourceRenamed, // Pass source rename callback
-                      onNewCategoryCreated: widget
-                          .onNewCategoryCreated, // Pass category creation callback
-                      onCategoryDeleted: widget
-                          .onCategoryDeleted, // Pass category deletion callback
-                      onCategoryRenamed: widget
-                          .onCategoryRenamed, // Pass category rename callback
+                      onSourceDeleted: widget.onSourceDeleted,
+                      onSourceRenamed: widget.onSourceRenamed,
+                      onCategorizedItemsUpdated:
+                          widget.onCategorizedItemsUpdated,
+                      fromSelectionScreen: true, // New flag
                     ),
                   ),
                 );
-
-                if (newArticleResult != null) {
-                  final String? newArticleName = newArticleResult['item_name'];
-                  final String? newArticleCategory =
-                      newArticleResult['item_category'];
-                  final String? newArticleSource =
-                      newArticleResult['item_source'];
-
-                  if (newArticleName != null &&
-                      newArticleCategory != null &&
-                      newArticleSource != null) {
-                    // Nach dem Hinzufügen eines neuen Artikels, aktualisiere die Liste
-                    // und den Zustand des SelectionScreen, falls der neue Artikel
-                    // in der aktuellen Filterkategorie sichtbar sein sollte.
-                    setState(() {});
-                  }
-                }
+                // After returning from ArticleManagementScreen, refresh SelectionScreen
+                setState(() {});
               },
               tooltip: 'Neuen Artikel hinzufügen',
             ),
@@ -1939,342 +1986,7 @@ class _SelectionScreenState extends State<SelectionScreen> {
   }
 }
 
-class NewArticleScreen extends StatefulWidget {
-  final Function(String name, String category, String source)
-  onSave; // Callback mit Source-Parameter
-  // final List<String> availableCategories; // Removed as it will now directly access global _categoryColors
-  final List<String> availableSources; // New: Available sources from HomeScreen
-  final Function(String sourceName)
-  onNewSourceCreated; // New: Callback to create new source
-  final Function(String sourceName)
-  onSourceDeleted; // New: Callback for deleting sources
-  final Function(String oldName, String newName)
-  onSourceRenamed; // New: Callback for renaming sources
-  final Function(String categoryName, {Color? categoryColor})
-  onNewCategoryCreated; // New: Pass category creation callback
-  final Function(String categoryName)
-  onCategoryDeleted; // New: Pass category deletion callback
-  final Function(String oldName, String newName, Color? newColor)
-  onCategoryRenamed; // New: Pass category rename callback
-
-  const NewArticleScreen({
-    super.key,
-    required this.onSave,
-    // required this.availableCategories, // Removed
-    required this.availableSources, // Require new parameter
-    required this.onNewSourceCreated, // Require new parameter
-    required this.onSourceDeleted, // Require new parameter
-    required this.onSourceRenamed, // Require new parameter
-    required this.onNewCategoryCreated, // Require new parameter
-    required this.onCategoryDeleted, // Require new parameter
-    required this.onCategoryRenamed, // Require new parameter
-  });
-
-  @override
-  State<NewArticleScreen> createState() => _NewArticleScreenState();
-}
-
-class _NewArticleScreenState extends State<NewArticleScreen> {
-  final TextEditingController _articleNameController =
-      new TextEditingController();
-  // Removed _newSourceController as it's no longer needed here
-
-  late String _selectedCategory;
-  late String _selectedSource; // New: Selected source
-  List<String> _localAvailableSources = []; // Local state to manage sources
-
-  @override
-  void initState() {
-    super.initState();
-    // Always default to 'Ohne' for category
-    _selectedCategory = 'Ohne';
-
-    // Always default to 'Ohne' for source
-    _selectedSource = 'Ohne';
-    // Ensure 'Ohne' is always present initially for the dropdown
-    _localAvailableSources = ['Ohne'];
-    _loadLocalSources(); // Load sources when the screen initializes
-
-    debugPrint(
-      'NewArticleScreen: Initial geladen. Verfügbare Kategorien: ${_categoryColors.keys.toList()}, Verfügbare Bezugsquellen: ${widget.availableSources}',
-    );
-  }
-
-  // New method to load sources from SharedPreferences
-  Future<void> _loadLocalSources() async {
-    final prefs = await SharedPreferences.getInstance();
-    final List<String>? sourcesList = prefs.getStringList('allSources');
-    setState(() {
-      // Use a Set to ensure uniqueness, then convert back to List and sort
-      Set<String> tempSources = Set<String>.from(sourcesList ?? []);
-      if (!tempSources.contains('Ohne')) {
-        tempSources.add('Ohne');
-      }
-      _localAvailableSources = tempSources.toList();
-      _localAvailableSources.sort(); // Keep it sorted
-
-      // Ensure _selectedSource is a valid option in the newly loaded list
-      if (!_localAvailableSources.contains(_selectedSource)) {
-        _selectedSource =
-            'Ohne'; // Fallback to 'Ohne' if selected source is no longer available
-      }
-      debugPrint(
-        'NewArticleScreen: _localAvailableSources after load and sort: $_localAvailableSources',
-      );
-    });
-  }
-
-  @override
-  void dispose() {
-    _articleNameController.dispose();
-    super.dispose();
-  }
-
-  // Helper function to check for duplicate article names across all categories
-  bool _isArticleNameDuplicate(String name) {
-    // Iterate through all categories in _categorizedItems
-    for (var categoryItems in _categorizedItems.values) {
-      // Check if any item in the current category has the same name (case-insensitive)
-      if (categoryItems.any(
-        (item) => item['name'].toString().toLowerCase() == name.toLowerCase(),
-      )) {
-        return true; // Duplicate found
-      }
-    }
-    return false; // No duplicate found
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Directly access the global _categoryColors for the dropdown items
-    List<String> dropdownCategories = new List.from(
-      _categoryColors.keys.toList(),
-    );
-    // Ensure 'Ohne' is at the top if it exists
-    if (dropdownCategories.contains('Ohne')) {
-      dropdownCategories.remove('Ohne');
-      dropdownCategories.insert(0, 'Ohne');
-    }
-    // Remove 'Alle' and 'Uncategorized' from the dropdown, as they are system categories not for item assignment
-    dropdownCategories.remove('Alle');
-    dropdownCategories.remove('Uncategorized');
-    // Add the new option at the end
-    dropdownCategories.add('__MANAGE_CATEGORIES__');
-
-    List<String> dropdownSources = new List.from(
-      _localAvailableSources,
-    ); // Use local state for sources
-    dropdownSources.add('__MANAGE_SOURCES__');
-
-    debugPrint('Building Source Dropdown: _selectedSource = $_selectedSource');
-    debugPrint(
-      'Building Source Dropdown: _localAvailableSources = $_localAvailableSources',
-    );
-    debugPrint('Building Source Dropdown: dropdownSources = $dropdownSources');
-
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.cyan, // Changed to cyan
-        foregroundColor: Colors.white,
-        title: const Text('Neuen Artikel hinzufügen'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextField(
-              controller: _articleNameController,
-              decoration: InputDecoration(
-                labelText: 'Artikelname',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            DropdownButtonFormField<String>(
-              value: _selectedCategory, // No more _isNewCategoryMode check
-              decoration: InputDecoration(
-                labelText: 'Kategorie',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              items: dropdownCategories.map((String category) {
-                // Use widget.availableCategories directly
-                return DropdownMenuItem<String>(
-                  value: category,
-                  child: Text(
-                    category == '__MANAGE_CATEGORIES__'
-                        ? 'Neue Kategorie anlegen...'
-                        : category,
-                  ),
-                );
-              }).toList(),
-              onChanged: (String? newValue) async {
-                debugPrint('Dropdown-Kategorie geändert zu: $newValue');
-                if (newValue == '__MANAGE_CATEGORIES__') {
-                  final String? newCategoryName = await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => CategoryManagementScreen(
-                        availableCategories: _categoryColors.keys
-                            .toList(), // Pass all categories
-                        onNewCategoryCreated: widget
-                            .onNewCategoryCreated, // Pass the actual callback
-                        onCategoryDeleted: widget
-                            .onCategoryDeleted, // Pass the actual callback
-                        onCategoryRenamed: widget
-                            .onCategoryRenamed, // Pass the actual callback
-                      ),
-                    ),
-                  );
-
-                  if (newCategoryName != null) {
-                    setState(() {
-                      _selectedCategory =
-                          newCategoryName; // Select the newly created category
-                    });
-                  }
-                  // After returning from CategoryManagementScreen, trigger a rebuild
-                  // to ensure the dropdown items reflect the updated global _categoryColors.
-                  setState(() {});
-                } else {
-                  setState(() {
-                    _selectedCategory =
-                        newValue!; // Simpler assignment for existing categories
-                  });
-                }
-              },
-            ),
-            const SizedBox(height: 20), // Spacer before source dropdown
-            DropdownButtonFormField<String>(
-              value: _selectedSource, // Use _selectedSource directly
-              decoration: InputDecoration(
-                labelText: 'Bezugsquelle',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              items: dropdownSources.map((String source) {
-                return DropdownMenuItem<String>(
-                  value: source,
-                  child: Text(
-                    source == '__MANAGE_SOURCES__'
-                        ? 'Neue Bezugsquelle hinzufügen...'
-                        : source,
-                  ), // Changed to __MANAGE_SOURCES__
-                );
-              }).toList(),
-              onChanged: (String? newValue) async {
-                // Make it async
-                debugPrint('Dropdown-Bezugsquelle geändert zu: $newValue');
-                if (newValue == '__MANAGE_SOURCES__') {
-                  // Changed to __MANAGE_SOURCES__
-                  final String? newSourceName = await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => SourceManagementScreen(
-                        availableSources: widget
-                            .availableSources, // Pass the original list for consistency
-                        onNewSourceCreated: widget.onNewSourceCreated,
-                        onSourceDeleted: widget
-                            .onSourceDeleted, // Pass source delete callback
-                        onSourceRenamed: widget
-                            .onSourceRenamed, // Pass source rename callback
-                      ),
-                    ),
-                  );
-
-                  // After returning from SourceManagementScreen, reload local sources
-                  await _loadLocalSources();
-
-                  if (newSourceName != null) {
-                    setState(() {
-                      _selectedSource =
-                          newSourceName; // Select the newly created source
-                    });
-                  }
-                  // Trigger a rebuild to update the dropdown items based on reloaded sources
-                  setState(() {});
-                } else {
-                  setState(() {
-                    _selectedSource = newValue!;
-                  });
-                }
-              },
-            ),
-            const SizedBox(height: 30),
-            ElevatedButton(
-              onPressed: () {
-                debugPrint('Artikel speichern Button getippt.');
-                String finalSource = _selectedSource;
-                String articleName = _articleNameController.text.trim();
-
-                if (articleName.isEmpty ||
-                    _selectedCategory.isEmpty ||
-                    finalSource.isEmpty) {
-                  debugPrint(
-                    'Fehler: Artikelname, Kategorie oder Bezugsquelle fehlt.',
-                  );
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Bitte gib einen Artikelnamen, wähle eine Kategorie und Bezugsquelle.',
-                      ), // Updated message
-                      duration: Duration(milliseconds: 500),
-                    ),
-                  );
-                  return; // Exit early if validation fails
-                }
-
-                // Check for duplicate article name
-                if (_isArticleNameDuplicate(articleName)) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Artikel "$articleName" existiert bereits. Bitte wähle einen anderen Namen.',
-                      ),
-                      duration: Duration(milliseconds: 1500),
-                    ),
-                  );
-                  return; // Exit early if duplicate
-                }
-
-                widget.onSave(
-                  articleName,
-                  _selectedCategory,
-                  finalSource,
-                ); // Speichern mit Quelle
-                debugPrint(
-                  'Artikel gespeichert: $articleName in Kategorie $_selectedCategory von $finalSource. Navigiere zurück.',
-                );
-                Navigator.pop(context, {
-                  'item_name': articleName,
-                  'item_category': _selectedCategory, // Use _selectedCategory
-                  'item_source': finalSource,
-                });
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.cyan, // Changed to cyan
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 15),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              child: const Text(
-                'Artikel speichern',
-                style: TextStyle(fontSize: 18),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+// Removed the NewArticleScreen class as it's no longer needed.
 
 // Neuer Screen zur Verwaltung der Bezugsquellen
 class SourceManagementScreen extends StatefulWidget {
@@ -3321,6 +3033,425 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
                 }
               },
               tooltip: 'Neue Kategorie hinzufügen',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// New Screen for Article Management
+class ArticleManagementScreen extends StatefulWidget {
+  final Function(String categoryName, {Color? categoryColor})
+  onNewCategoryCreated;
+  final Function(String categoryName) onCategoryDeleted;
+  final Function(String oldName, String newName, Color? newColor)
+  onCategoryRenamed;
+  final List<String> availableSources;
+  final Function(String sourceName) onNewSourceCreated;
+  final Function(String sourceName) onSourceDeleted;
+  final Function(String oldName, String newName) onSourceRenamed;
+  final VoidCallback onCategorizedItemsUpdated;
+  final bool
+  fromSelectionScreen; // New: Flag to indicate if navigated from SelectionScreen
+
+  const ArticleManagementScreen({
+    super.key,
+    required this.onNewCategoryCreated,
+    required this.onCategoryDeleted,
+    required this.onCategoryRenamed,
+    required this.availableSources,
+    required this.onNewSourceCreated,
+    required this.onSourceDeleted,
+    required this.onSourceRenamed,
+    required this.onCategorizedItemsUpdated,
+    this.fromSelectionScreen = false, // Default to false
+  });
+
+  @override
+  State<ArticleManagementScreen> createState() =>
+      _ArticleManagementScreenState();
+}
+
+class _ArticleManagementScreenState extends State<ArticleManagementScreen> {
+  final TextEditingController _articleNameController = TextEditingController();
+  late String _selectedCategoryForDialog;
+  late String _selectedSourceForDialog;
+  List<String> _localAvailableSourcesForDialog = [];
+
+  // System-defined categories that cannot be deleted or renamed from the master list
+  final List<String> _systemCategories = ['Alle', 'Ohne', 'Uncategorized'];
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedCategoryForDialog = 'Ohne';
+    _selectedSourceForDialog = 'Ohne';
+    _localAvailableSourcesForDialog = ['Ohne'];
+    _loadLocalSourcesForDialog(); // Initial load for the dialog's source dropdown
+  }
+
+  @override
+  void dispose() {
+    _articleNameController.dispose();
+    super.dispose();
+  }
+
+  // Loads sources specifically for the dialog's dropdown
+  Future<void> _loadLocalSourcesForDialog() async {
+    // This should reflect the current global _allSources from HomeScreen
+    setState(() {
+      Set<String> tempSources = Set<String>.from(widget.availableSources);
+      if (!tempSources.contains('Ohne')) {
+        tempSources.add('Ohne');
+      }
+      _localAvailableSourcesForDialog = tempSources.toList();
+      _localAvailableSourcesForDialog.sort();
+    });
+  }
+
+  // Helper function to check for duplicate article names across all categories in the master list
+  bool _isArticleNameDuplicateInMasterList(String name) {
+    for (var categoryItems in _categorizedItems.values) {
+      if (categoryItems.any(
+        (item) => item['name'].toString().toLowerCase() == name.toLowerCase(),
+      )) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // Dialog to add a new article to the master list
+  Future<void> _showAddArticleDialog() async {
+    _articleNameController.clear();
+    _selectedCategoryForDialog =
+        'Ohne'; // Reset to default category for new article
+    _selectedSourceForDialog =
+        'Ohne'; // Reset to default source for new article
+    await _loadLocalSourcesForDialog(); // Ensure sources are up-to-date before opening dialog
+
+    await showDialog<void>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          // Use StatefulBuilder to update dialog state
+          builder: (BuildContext context, StateSetter setState) {
+            List<String> dropdownCategories = List.from(
+              _categoryColors.keys.toList(),
+            );
+            if (dropdownCategories.contains('Ohne')) {
+              dropdownCategories.remove('Ohne');
+              dropdownCategories.insert(0, 'Ohne');
+            }
+            dropdownCategories.remove('Alle');
+            dropdownCategories.remove('Uncategorized');
+            dropdownCategories.add('__MANAGE_CATEGORIES__');
+
+            List<String> dropdownSources = List.from(
+              _localAvailableSourcesForDialog,
+            );
+            dropdownSources.add('__MANAGE_SOURCES__');
+
+            return AlertDialog(
+              title: const Text('Neuen Artikel hinzufügen'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: _articleNameController,
+                      decoration: InputDecoration(
+                        labelText: 'Artikelname',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    DropdownButtonFormField<String>(
+                      value: _selectedCategoryForDialog,
+                      decoration: InputDecoration(
+                        labelText: 'Kategorie',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      items: dropdownCategories.map((String category) {
+                        return DropdownMenuItem<String>(
+                          value: category,
+                          child: Text(
+                            category == '__MANAGE_CATEGORIES__'
+                                ? 'Neue Kategorie anlegen...'
+                                : category,
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) async {
+                        if (newValue == '__MANAGE_CATEGORIES__') {
+                          final String? newCategoryName = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => CategoryManagementScreen(
+                                availableCategories: _categoryColors.keys
+                                    .toList(),
+                                onNewCategoryCreated:
+                                    widget.onNewCategoryCreated,
+                                onCategoryDeleted: widget.onCategoryDeleted,
+                                onCategoryRenamed: widget.onCategoryRenamed,
+                              ),
+                            ),
+                          );
+                          if (newCategoryName != null) {
+                            setState(() {
+                              // Update dialog state
+                              _selectedCategoryForDialog = newCategoryName;
+                            });
+                          }
+                          // The parent HomeScreen's _addNewCategory already calls _saveData, so _categoryColors is updated.
+                          // No explicit rebuild of dropdownCategories needed here as StatefulBuilder handles it.
+                        } else {
+                          setState(() {
+                            // Update dialog state
+                            _selectedCategoryForDialog = newValue!;
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    DropdownButtonFormField<String>(
+                      value: _selectedSourceForDialog,
+                      decoration: InputDecoration(
+                        labelText: 'Bezugsquelle',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      items: dropdownSources.map((String source) {
+                        return DropdownMenuItem<String>(
+                          value: source,
+                          child: Text(
+                            source == '__MANAGE_SOURCES__'
+                                ? 'Neue Bezugsquelle hinzufügen...'
+                                : source,
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) async {
+                        if (newValue == '__MANAGE_SOURCES__') {
+                          final String? newSourceName = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => SourceManagementScreen(
+                                availableSources: widget.availableSources,
+                                onNewSourceCreated: widget.onNewSourceCreated,
+                                onSourceDeleted: widget.onSourceDeleted,
+                                onSourceRenamed: widget.onSourceRenamed,
+                              ),
+                            ),
+                          );
+                          if (newSourceName != null) {
+                            await _loadLocalSourcesForDialog(); // Reload sources for dialog
+                            setState(() {
+                              // Update dialog state
+                              _selectedSourceForDialog = newSourceName;
+                            });
+                          }
+                        } else {
+                          setState(() {
+                            // Update dialog state
+                            _selectedSourceForDialog = newValue!;
+                          });
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: const Text('Abbrechen'),
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop();
+                  },
+                ),
+                TextButton(
+                  child: const Text('Speichern'),
+                  onPressed: () {
+                    String articleName = _articleNameController.text.trim();
+                    if (articleName.isEmpty ||
+                        _selectedCategoryForDialog.isEmpty ||
+                        _selectedSourceForDialog.isEmpty) {
+                      ScaffoldMessenger.of(dialogContext).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Bitte gib einen Artikelnamen, wähle eine Kategorie und Bezugsquelle.',
+                          ),
+                          duration: Duration(milliseconds: 1500),
+                        ),
+                      );
+                      return;
+                    }
+                    if (_isArticleNameDuplicateInMasterList(articleName)) {
+                      ScaffoldMessenger.of(dialogContext).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Artikel "$articleName" existiert bereits in der Masterliste. Bitte wähle einen anderen Namen.',
+                          ),
+                          duration: Duration(milliseconds: 2000),
+                        ),
+                      );
+                      return;
+                    }
+
+                    // Add to global _categorizedItems
+                    if (!_categorizedItems.containsKey(
+                      _selectedCategoryForDialog,
+                    )) {
+                      _categorizedItems[_selectedCategoryForDialog] = [];
+                    }
+                    _categorizedItems[_selectedCategoryForDialog]!.add({
+                      'name': articleName,
+                      'category': _selectedCategoryForDialog,
+                      'isDone': false, // Always false for master list items
+                      'source': _selectedSourceForDialog,
+                    });
+                    widget
+                        .onCategorizedItemsUpdated(); // Notify HomeScreen to save
+
+                    ScaffoldMessenger.of(dialogContext).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Artikel "$articleName" zur Masterliste hinzugefügt.',
+                        ),
+                        duration: Duration(milliseconds: 1000),
+                      ),
+                    );
+                    Navigator.of(
+                      dialogContext,
+                    ).pop(); // Close the add article dialog
+
+                    // If navigated from SelectionScreen, pop ArticleManagementScreen
+                    if (widget.fromSelectionScreen) {
+                      Navigator.of(
+                        context,
+                      ).pop(); // Pop ArticleManagementScreen
+                    } else {
+                      // Otherwise, just refresh the current ArticleManagementScreen
+                      this.setState(
+                        () {},
+                      ); // This setState is for the _ArticleManagementScreenState
+                    }
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Group and sort articles for display
+    Map<String, List<Map<String, dynamic>>> groupedArticles = {};
+    _categorizedItems.forEach((category, items) {
+      if (!_systemCategories.contains(category)) {
+        // Exclude system categories from direct display
+        groupedArticles[category] = List.from(items);
+        groupedArticles[category]!.sort(
+          (a, b) => a['name'].compareTo(b['name']),
+        );
+      }
+    });
+
+    List<String> sortedCategories = groupedArticles.keys.toList();
+    sortedCategories.sort();
+
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
+        title: const Text('Artikel verwalten'),
+        leading: IconButton(
+          // Added leading back button
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pop(context); // Simply pop the screen
+          },
+        ),
+      ),
+      body: sortedCategories.isEmpty
+          ? const Center(
+              child: Text(
+                'Noch keine Artikel in der Masterliste vorhanden. Füge neue hinzu!',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+            )
+          : ListView.builder(
+              itemCount: sortedCategories.length,
+              itemBuilder: (context, categoryIndex) {
+                final categoryName = sortedCategories[categoryIndex];
+                final articles = groupedArticles[categoryName]!;
+                final categoryColor =
+                    _categoryColors[categoryName] ?? Colors.grey;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                      child: Text(
+                        categoryName,
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: categoryColor,
+                        ),
+                      ),
+                    ),
+                    ...articles.map((article) {
+                      return Card(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                          side: BorderSide(color: categoryColor, width: 2.0),
+                        ),
+                        child: ListTile(
+                          title: Text(
+                            article['name']!,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          subtitle: Text(
+                            'Bezugsquelle: ${article['source'] ?? 'Ohne'}',
+                          ),
+                          // No delete/edit for now, as per the refined plan
+                        ),
+                      );
+                    }).toList(),
+                  ],
+                );
+              },
+            ),
+      bottomNavigationBar: BottomAppBar(
+        color: Colors.blue,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            IconButton(
+              icon: const Icon(Icons.add, color: Colors.white, size: 30),
+              onPressed: _showAddArticleDialog,
+              tooltip: 'Neuen Artikel zur Masterliste hinzufügen',
             ),
           ],
         ),
