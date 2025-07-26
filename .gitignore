@@ -1,0 +1,40 @@
+# Standard-Flutter-Ignorierungen
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.vscode/launch.json # Kann ignoriert werden, wenn es keine speziellen Teameinstellungen sind
+/build/
+/ios/Flutter/Generated.xcconfig
+/ios/Pods/
+/ios/.symlinks/
+/android/.gradle/
+/android/local.properties
+/android/app/build/
+/android/key.properties
+/android/app/src/debug/
+/android/app/src/profile/
+/android/gradle/
+/android/.idea/
+
+# macOS spezifisch
+.DS_Store
+
+# Logs und temporäre Dateien
+*.log
+*.lock
+*.suo
+*.user
+*.bak
+*~
+*.tmp
+
+# IDE spezifisch (falls nicht schon abgedeckt)
+.idea/
+*.iml
+
+# Test-Artefakte
+/coverage/
+
+# Abhängigkeiten von pub
+/pubspec.lock # Normalerweise sollte dies versioniert werden, aber manchmal wird es ignoriert
