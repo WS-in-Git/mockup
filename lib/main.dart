@@ -69,7 +69,10 @@ Color _generateRandomColor() {
 }
 
 // Globale Definition für die kategorisierten Artikel (Masterliste)
-late Map<String, List<Map<String, dynamic>>> _categorizedItems;
+// Initialisiert mit Standardartikeln, wird später mit SharedPreferences überschrieben.
+Map<String, List<Map<String, dynamic>>> _categorizedItems = Map.from(
+  _defaultCategorizedItems,
+);
 
 // Standardartikel für die Initialisierung von _categorizedItems
 const Map<String, List<Map<String, dynamic>>> _defaultCategorizedItems = {
@@ -209,14 +212,17 @@ class _HomeScreenState extends State<HomeScreen> {
   int? _lastDeletedItemIndex;
   Timer? _undoTimer;
 
+  // Flag, das anzeigt, ob alle Daten geladen wurden
+  bool _isDataLoaded = false;
+
   @override
   void initState() {
     super.initState();
-    _loadData(); // Daten beim Start der App laden
+    _initializeData(); // Daten beim Start der App laden und Zustand aktualisieren
   }
 
-  // Laden der Daten aus SharedPreferences
-  Future<void> _loadData() async {
+  // Initialisiert alle Daten asynchron und aktualisiert den UI-Zustand
+  Future<void> _initializeData() async {
     final prefs = await SharedPreferences.getInstance();
 
     // Kategoriefarben laden
@@ -225,27 +231,11 @@ class _HomeScreenState extends State<HomeScreen> {
       final Map<String, dynamic> decodedColors = jsonDecode(
         categoryColorsString,
       );
-      setState(() {
-        _categoryColors = decodedColors.map(
-          (key, value) => MapEntry(key, Color(value as int)),
-        );
-        debugPrint('Kategoriefarben geladen: $_categoryColors');
-      });
+      _categoryColors = decodedColors.map(
+        (key, value) => MapEntry(key, Color(value as int)),
+      );
     }
-
-    // Bezugsquellen laden
-    final List<String>? sourcesList = prefs.getStringList('allSources');
-    if (sourcesList != null) {
-      setState(() {
-        // Use a Set to ensure uniqueness when loading from SharedPreferences
-        Set<String> uniqueSources = Set<String>.from(sourcesList);
-        _allSources = uniqueSources.toList();
-        _allSources.sort(); // Keep sorted
-        debugPrint('Bezugsquellen geladen: $_allSources');
-      });
-    }
-
-    // Ensure 'Ohne' category is always present in _categoryColors
+    // Sicherstellen, dass Systemkategorien immer vorhanden sind
     if (!_categoryColors.containsKey('Ohne')) {
       _categoryColors['Ohne'] = Colors.grey;
     }
@@ -255,37 +245,45 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!_categoryColors.containsKey('Uncategorized')) {
       _categoryColors['Uncategorized'] = Colors.grey;
     }
+    debugPrint('Kategoriefarben geladen: $_categoryColors');
 
-    // Ensure 'Ohne' source is always present in _allSources
-    // This check is now less critical as _loadData for sources uses a Set,
-    // but good to keep as a fallback if _allSources is manipulated elsewhere.
+    // Bezugsquellen laden
+    final List<String>? sourcesList = prefs.getStringList('allSources');
+    if (sourcesList != null) {
+      Set<String> uniqueSources = Set<String>.from(sourcesList);
+      _allSources = uniqueSources.toList();
+      _allSources.sort();
+    }
+    // Sicherstellen, dass 'Ohne' Bezugsquelle immer vorhanden ist
     if (!_allSources.contains('Ohne')) {
       _allSources.insert(0, 'Ohne');
-      _allSources.sort(); // Re-sort if 'Ohne' was just added
+      _allSources.sort();
     }
+    debugPrint('Bezugsquellen geladen: $_allSources');
 
     // Einkaufslisten laden
     final String? shoppingListsString = prefs.getString('allShoppingLists');
     if (shoppingListsString != null) {
       final Map<String, dynamic> decodedLists = jsonDecode(shoppingListsString);
-      setState(() {
-        _allShoppingLists = decodedLists.map((listName, itemsJson) {
-          List<Map<String, dynamic>> items = (itemsJson as List).map((itemMap) {
-            // Sicherstellen, dass isDone als bool geladen wird, Standardwert false
-            final Map<String, dynamic> parsedItem = Map<String, dynamic>.from(
-              itemMap,
-            );
-            parsedItem['isDone'] =
-                parsedItem['isDone'] ?? false; // Standardwert für alte Einträge
-            // Sicherstellen, dass source geladen wird, Standardwert 'Ohne'
-            parsedItem['source'] = parsedItem['source'] ?? 'Ohne';
-            return parsedItem;
-          }).toList();
-          return MapEntry(listName, items);
-        });
-        debugPrint('Einkaufslisten geladen: $_allShoppingLists');
+      _allShoppingLists = decodedLists.map((listName, itemsJson) {
+        List<Map<String, dynamic>> items = (itemsJson as List).map((itemMap) {
+          // Sicherstellen, dass isDone als bool geladen wird, Standardwert false
+          final Map<String, dynamic> parsedItem = Map<String, dynamic>.from(
+            itemMap,
+          );
+          parsedItem['isDone'] =
+              parsedItem['isDone'] ?? false; // Standardwert für alte Einträge
+          // Sicherstellen, dass source geladen wird, Standardwert 'Ohne'
+          parsedItem['source'] = parsedItem['source'] ?? 'Ohne';
+          return parsedItem;
+        }).toList();
+        return MapEntry(listName, items);
       });
+    } else {
+      // Wenn keine Listen vorhanden sind, erstelle eine Standardliste
+      _allShoppingLists[_currentListName] = [];
     }
+    debugPrint('Einkaufslisten geladen: $_allShoppingLists');
 
     // Kategorisierte Artikel laden
     final String? categorizedItemsString = prefs.getString('categorizedItems');
@@ -306,34 +304,30 @@ class _HomeScreenState extends State<HomeScreen> {
       });
       debugPrint('Kategorisierte Artikel geladen: $_categorizedItems');
     } else {
-      _categorizedItems = Map.from(
-        _defaultCategorizedItems,
-      ); // Initialize with default if not found
-      debugPrint('Kategorisierte Artikel mit Standardwerten initialisiert.');
+      // Wenn nicht gefunden, _categorizedItems hat bereits Standardwerte (globale Variable).
+      debugPrint(
+        'Kategorisierte Artikel mit Standardwerten initialisiert (globale Variable).',
+      );
     }
-
-    // Ensure 'Ohne' category is always present in _categorizedItems
+    // Sicherstellen, dass 'Ohne' Kategorie immer in _categorizedItems vorhanden ist
     if (!_categorizedItems.containsKey('Ohne')) {
       _categorizedItems['Ohne'] = [];
     }
 
     // Aktuellen Listennamen laden
     final String? currentListName = prefs.getString('currentListName');
-    setState(() {
-      if (currentListName != null &&
-          _allShoppingLists.containsKey(currentListName)) {
-        _currentListName = currentListName;
-      } else if (_allShoppingLists.isEmpty) {
-        // Wenn keine Listen vorhanden sind, erstelle eine Standardliste
-        _currentListName = 'Meine erste Liste';
-        _allShoppingLists[_currentListName] = [];
-        _saveData(); // Speichern der neu erstellten Standardliste
-      } else {
-        // Wenn der geladene Name nicht existiert, wähle die erste Liste
-        _currentListName = _allShoppingLists.keys.first;
-      }
-      debugPrint('Aktuelle Liste nach Laden: $_currentListName');
-    });
+    if (currentListName != null &&
+        _allShoppingLists.containsKey(currentListName)) {
+      _currentListName = currentListName;
+    } else if (_allShoppingLists.isNotEmpty) {
+      _currentListName = _allShoppingLists.keys.first;
+    } else {
+      // Dieser Fall sollte idealerweise nicht eintreten, wenn _allShoppingLists oben initialisiert wird.
+      _currentListName = 'Meine erste Liste';
+      _allShoppingLists[_currentListName] =
+          []; // Sicherstellen, dass die Liste existiert
+    }
+    debugPrint('Aktuelle Liste nach Laden: $_currentListName');
 
     // Prüfen, ob der Swipe-Hinweis schon einmal angezeigt wurde
     final bool hasShownSwipeHint = prefs.getBool('hasShownSwipeHint') ?? false;
@@ -342,19 +336,23 @@ class _HomeScreenState extends State<HomeScreen> {
       await prefs.setBool('hasShownSwipeHint', true); // Als angezeigt markieren
     }
 
-    // Zeige den Hinweis nach dem ersten Frame
-    if (_showInitialSwipeHint) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Tipp: Wische einen Artikel nach rechts zum Erledigen/Unerledigen oder nach links zum Löschen.',
+    // Nachdem alle Daten geladen sind, den UI-Zustand aktualisieren
+    setState(() {
+      _isDataLoaded = true;
+      // Zeige den Hinweis nach dem ersten Frame, wenn er noch nicht angezeigt wurde
+      if (_showInitialSwipeHint) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Tipp: Wische einen Artikel nach rechts zum Erledigen/Unerledigen oder nach links zum Löschen.',
+              ),
+              duration: Duration(seconds: 4), // Hinweis für 4 Sekunden anzeigen
             ),
-            duration: Duration(seconds: 4), // Hinweis für 4 Sekunden anzeigen
-          ),
-        );
-      });
-    }
+          );
+        });
+      }
+    });
   }
 
   // Speichern der Daten in SharedPreferences
@@ -479,7 +477,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
     });
-    Navigator.pop(context); // Drawer schließen
+    // Navigator.pop(context); // Drawer schließen - removed, as this is now called from ListManagementScreen
   }
 
   // Methode zum Löschen einer Einkaufsliste
@@ -507,7 +505,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
     });
-    Navigator.pop(context); // Drawer schließen
+    // Navigator.pop(context); // Drawer schließen - removed, as this is now called from ListManagementScreen
   }
 
   // Methode zum Umbenennen einer Einkaufsliste
@@ -662,6 +660,9 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  // System-defined categories that cannot be deleted or renamed from the master list
+  final List<String> _systemCategories = ['Alle', 'Ohne', 'Uncategorized'];
+
   // Methode zum Hinzufügen einer neuen Kategorie (aus CategoryManagementScreen)
   void _addNewCategory(String categoryName, {Color? categoryColor}) {
     setState(() {
@@ -741,6 +742,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _categoryColors.remove(
           oldName,
         ); // Alten Eintrag entfernen, wenn Name geändert
+
         // Alle Artikel in allen Einkaufslisten aktualisieren, die den alten Kategorienamen verwenden
         _allShoppingLists.forEach((listName, items) {
           for (var item in items) {
@@ -761,7 +763,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // Dialog zum Umbenennen einer Einkaufsliste
+  // Dialog zum Umbenennen einer Einkaufsliste (wird jetzt von ListManagementScreen aufgerufen)
   Future<void> _showRenameListDialog(String oldListName) async {
     TextEditingController _renameController = TextEditingController(
       text: oldListName,
@@ -822,10 +824,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Dialog zum Erstellen einer neuen Einkaufsliste
+  // Dialog zum Erstellen einer neuen Einkaufsliste (wird jetzt von ListManagementScreen aufgerufen)
   Future<void> _showCreateNewListDialog() async {
     TextEditingController _listNameController =
-        new TextEditingController(); // Korrekter Controller für diesen Dialog
+        TextEditingController(); // Korrekter Controller für diesen Dialog
     String?
     newListName; // Temporäre Variable, um den Wert des Textfeldes zu speichern
 
@@ -940,251 +942,23 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // Hilfsmethode zum Erstellen der gruppierten und farbigen Listenelemente für den HomeScreen
-  List<Widget> _buildGroupedItems() {
-    List<Map<String, dynamic>> itemsToDisplay = new List.from(
-      _allShoppingLists[_currentListName] ?? [],
-    ); // Artikel der aktuellen Liste
-
-    // Filterung basierend auf _showAllItems
-    if (!_showAllItems) {
-      itemsToDisplay = itemsToDisplay
-          .where((item) => !(item['isDone'] as bool))
-          .toList();
-    }
-
-    itemsToDisplay.sort((a, b) {
-      final categoryA = a['category'] ?? 'Uncategorized';
-      final categoryB = b['category'] ?? 'Uncategorized';
-      return categoryA.compareTo(categoryB);
-    });
-
-    List<Widget> widgets = [];
-    String? currentCategoryHeader = '';
-
-    for (int i = 0; i < itemsToDisplay.length; i++) {
-      final item = itemsToDisplay[i];
-      final itemCategory = item['category'] ?? 'Uncategorized';
-      final itemColor = _categoryColors[itemCategory] ?? Colors.grey;
-      final bool isDone = item['isDone'] as bool; // Den isDone-Status abrufen
-      final String itemSource =
-          item['source'] ?? 'Ohne'; // Bezugsquelle abrufen
-
-      // Füge Kategorie-Header hinzu, wenn sich die Kategorie ändert
-      if (itemCategory != currentCategoryHeader) {
-        widgets.add(
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              16,
-              8,
-              16,
-              4,
-            ), // Padding zurückgesetzt
-            child: Text(
-              itemCategory,
-              style: TextStyle(
-                fontSize:
-                    14.4, // Font-Größe der Kategorienüberschrift auf 80% (18 * 0.8)
-                fontWeight: FontWeight.bold,
-                color: itemColor, // Kategorie-Farbe für den Header
-              ),
-            ),
-          ),
-        );
-        currentCategoryHeader = itemCategory;
-      }
-
-      // Füge das Listenelement (Dismissible mit CheckboxListTile) hinzu
-      widgets.add(
-        Dismissible(
-          key: Key(
-            item['name']! + item['category']! + item['isDone'].toString(),
-          ), // Eindeutiger Schlüssel für Dismissible, inklusive isDone
-          direction: DismissDirection
-              .horizontal, // Ermöglicht Wischen in beide Richtungen
-          // Hintergrund für Wischen nach rechts (Erledigt/Unerledigt)
-          background: Container(
-            color: isDone
-                ? Colors.grey
-                : Colors
-                      .green, // Farbe je nach Status (unerledigt -> erledigt: grün; erledigt -> unerledigt: grau)
-            alignment: Alignment.centerLeft, // Icon links ausrichten
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Icon(
-              isDone ? Icons.undo : Icons.check,
-              color: Colors.white,
-              size: 22.5,
-            ), // Icon Größe auf 75% reduziert
-          ),
-          // Sekundärer Hintergrund für Wischen nach links (Löschen)
-          secondaryBackground: Container(
-            color: Colors.red,
-            alignment: Alignment.centerRight, // Icon rechts ausrichten
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: const Icon(
-              Icons.delete,
-              color: Colors.white,
-              size: 22.5,
-            ), // Icon Größe auf 75% reduziert
-          ),
-          onDismissed: (direction) {
-            // onDismissed wird nur für die Löschfunktion verwendet, da confirmDismiss den Statuswechsel handhabt
-            if (direction == DismissDirection.endToStart) {
-              // Wischen nach links (Löschen)
-              // Speichere den Artikel und seinen Index vor dem Entfernen für die Undo-Funktion
-              final List<Map<String, dynamic>> currentListItems =
-                  _allShoppingLists[_currentListName]!;
-              final int originalIndex = currentListItems.indexOf(item);
-
-              setState(() {
-                _lastDeletedItem = Map<String, dynamic>.from(
-                  item,
-                ); // Tiefe Kopie des Artikels
-                _lastDeletedItemIndex = originalIndex;
-                _removeItemFromCurrentList(
-                  item,
-                ); // Entfernt den Artikel und speichert Daten
-              });
-
-              // Breche vorhandenen Timer ab und starte einen neuen
-              _undoTimer?.cancel();
-              _undoTimer = new Timer(const Duration(seconds: 5), () {
-                if (mounted) {
-                  // Überprüfe, ob das Widget noch im Widget-Baum ist
-                  setState(() {
-                    _lastDeletedItem = null;
-                    _lastDeletedItemIndex = null;
-                  });
-                }
-              });
-
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  duration: const Duration(milliseconds: 500),
-                  content: Text('Artikel "${item['name']}" gelöscht.'),
-                ),
-              );
-            }
-          },
-          confirmDismiss: (direction) async {
-            if (direction == DismissDirection.startToEnd) {
-              // Wischen nach rechts (Erledigt/Unerledigt)
-              _toggleItemDoneStatus(item); // Status des Artikels umschalten
-
-              if (_showAllItems) {
-                // Im Modus "Alle Artikel anzeigen" soll der Artikel nicht visuell verschwinden.
-                // Die Statusänderung wird direkt im Widget sichtbar.
-                return false; // Verhindert die visuelle Entfernung des Dismissible
-              } else {
-                // Im Modus "Unerledigte Artikel anzeigen" (_showAllItems ist false)
-                // Wenn der Artikel jetzt ERLEDIGT ist, soll er visuell aus der Liste verschwinden.
-                if (item['isDone'] as bool) {
-                  // isDone ist hier bereits der NEUE Status
-                  return true; // Erlaubt die visuelle Entfernung (er wird dann vom Filter ausgeblendet)
-                } else {
-                  // Wenn der Artikel jetzt UNERLEDIGT ist (er war erledigt und wurde unerledigt gemacht),
-                  // soll er wieder in der gefilterten Liste erscheinen. Daher keine visuelle Entfernung.
-                  return false; // Verhindert die visuelle Entfernung
-                }
-              }
-            }
-            // Für DismissDirection.endToStart (Löschen), immer die Entfernung erlauben
-            return true;
-          },
-          child: Card(
-            margin: const EdgeInsets.symmetric(
-              horizontal: 4,
-              vertical: 2.0,
-            ), // Vertical margin set to 2.0
-            elevation: 1, // Elevation reduziert
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(4),
-              side: BorderSide(
-                color: itemColor,
-                width: 1.5,
-              ), // Rahmenbreite reduziert
-            ),
-            color: Colors.white,
-            child: InkWell(
-              // Wrap with InkWell for onTap functionality
-              onTap: () {
-                // Fügt onTap für die gesamte Zeile hinzu
-                _toggleItemDoneStatus(item);
-              },
-              child: Padding(
-                // Add Padding around the custom content
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 0.5,
-                ), // Abstand nach oben und unten halbiert (war 1.0)
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize
-                            .min, // Make column take minimum vertical space
-                        children: [
-                          Text(
-                            item['name']!,
-                            style: TextStyle(
-                              fontSize:
-                                  13.2, // Font-Größe des Artikels um 10% größer (12 * 1.1)
-                              fontWeight: FontWeight.bold,
-                              color: isDone ? Colors.grey : Colors.black,
-                              decoration: isDone
-                                  ? TextDecoration.lineThrough
-                                  : TextDecoration.none,
-                            ),
-                          ),
-                          GestureDetector(
-                            onTap: () {
-                              _showSourceSelectionDialogForHome(item);
-                            },
-                            child: Text(
-                              'Bezugsquelle: $itemSource',
-                              style: TextStyle(
-                                fontSize:
-                                    9.6, // Font-Größe der Bezugsquelle 20% größer (8 * 1.2)
-                                color: isDone
-                                    ? Colors.grey[500]
-                                    : Colors.grey[700],
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Checkbox on the right
-                    Transform.scale(
-                      scale: 0.8, // Further reduce scale for checkbox
-                      child: Checkbox(
-                        value: isDone,
-                        activeColor: Colors.green,
-                        checkColor: Colors.white,
-                        side: BorderSide(
-                          color: isDone ? Colors.green : Colors.grey[300]!,
-                          width: 1.5,
-                        ),
-                        onChanged: (bool? newValue) {
-                          _toggleItemDoneStatus(item);
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+  @override
+  Widget build(BuildContext context) {
+    // Zeige einen Ladeindikator, wenn die Daten noch nicht geladen sind
+    if (!_isDataLoaded) {
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.red,
+          foregroundColor: Colors.white,
+          toolbarHeight: 48,
+          title: const Text('Lade Daten...'),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(), // Zeige einen Ladekreis an
         ),
       );
     }
-    return widgets;
-  }
 
-  @override
-  Widget build(BuildContext context) {
     // Überprüfe, ob die aktuelle Liste leer ist
     bool isCurrentListEmpty =
         (_allShoppingLists[_currentListName]?.isEmpty ?? true);
@@ -1268,8 +1042,199 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
     } else {
-      // Fall 3: Normale Listenanzeige
-      bodyContent = ListView(children: _buildGroupedItems());
+      // Fall 3: Normale Listenanzeige ohne ReorderableListView
+      // Group articles by category and sort categories alphabetically (excluding system categories, 'Ohne' last)
+      Map<String, List<Map<String, dynamic>>> groupedArticles = {};
+      (_allShoppingLists[_currentListName] ?? []).forEach((item) {
+        final category = item['category'] ?? 'Ohne';
+        if (!_showAllItems && (item['isDone'] as bool)) {
+          return; // Skip if item is done and not showing all
+        }
+        if (!groupedArticles.containsKey(category)) {
+          groupedArticles[category] = [];
+        }
+        groupedArticles[category]!.add(item);
+      });
+
+      List<String> sortedCategories = groupedArticles.keys.toList();
+      // Sort categories alphabetically, but ensure 'Ohne' is always at the end
+      sortedCategories.sort((a, b) {
+        if (a == 'Ohne') return 1;
+        if (b == 'Ohne') return -1;
+        return a.compareTo(b);
+      });
+
+      // Sort items within each category alphabetically
+      groupedArticles.values.forEach((items) {
+        items.sort((a, b) => a['name'].compareTo(b['name']));
+      });
+
+      List<Widget> listWidgets = [];
+      for (String categoryName in sortedCategories) {
+        final categoryColor = _categoryColors[categoryName] ?? Colors.grey;
+        final articlesInThisCategory = groupedArticles[categoryName]!;
+
+        listWidgets.add(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: Text(
+              categoryName,
+              style: TextStyle(
+                fontSize: 14.4,
+                fontWeight: FontWeight.bold,
+                color: categoryColor,
+              ),
+            ),
+          ),
+        );
+
+        for (var item in articlesInThisCategory) {
+          final bool isDone = item['isDone'] as bool;
+          final String itemSource = item['source'] ?? 'Ohne';
+
+          listWidgets.add(
+            Dismissible(
+              key: Key(item['name']! + item['category']!), // Stable key
+              direction: DismissDirection.horizontal,
+              background: Container(
+                color: isDone ? Colors.grey : Colors.green,
+                alignment: Alignment.centerLeft,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Icon(
+                  isDone ? Icons.undo : Icons.check,
+                  color: Colors.white,
+                  size: 22.5,
+                ),
+              ),
+              secondaryBackground: Container(
+                color: Colors.red,
+                alignment: Alignment.centerRight,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: const Icon(
+                  Icons.delete,
+                  color: Colors.white,
+                  size: 22.5,
+                ),
+              ),
+              onDismissed: (direction) {
+                if (direction == DismissDirection.endToStart) {
+                  final List<Map<String, dynamic>> currentListItems =
+                      _allShoppingLists[_currentListName]!;
+                  final int originalIndex = currentListItems.indexOf(item);
+
+                  setState(() {
+                    _lastDeletedItem = Map<String, dynamic>.from(item);
+                    _lastDeletedItemIndex = originalIndex;
+                    _removeItemFromCurrentList(item);
+                  });
+
+                  _undoTimer?.cancel();
+                  _undoTimer = Timer(const Duration(seconds: 5), () {
+                    if (mounted) {
+                      setState(() {
+                        _lastDeletedItem = null;
+                        _lastDeletedItemIndex = null;
+                      });
+                    }
+                  });
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      duration: const Duration(milliseconds: 500),
+                      content: Text('Artikel "${item['name']}" gelöscht.'),
+                    ),
+                  );
+                }
+              },
+              confirmDismiss: (direction) async {
+                if (direction == DismissDirection.startToEnd) {
+                  _toggleItemDoneStatus(item);
+                  return _showAllItems ? false : (item['isDone'] as bool);
+                }
+                return true;
+              },
+              child: Card(
+                margin: const EdgeInsets.symmetric(
+                  horizontal: 4,
+                  vertical: 2.0,
+                ),
+                elevation: 1,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4),
+                  side: BorderSide(color: categoryColor, width: 1.5),
+                ),
+                color: Colors.white,
+                child: InkWell(
+                  onTap: () {
+                    _toggleItemDoneStatus(item);
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 0.5,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                item['name']!,
+                                style: TextStyle(
+                                  fontSize: 13.2,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDone ? Colors.grey : Colors.black,
+                                  decoration: isDone
+                                      ? TextDecoration.lineThrough
+                                      : TextDecoration.none,
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  _showSourceSelectionDialogForHome(item);
+                                },
+                                child: Text(
+                                  'Bezugsquelle: $itemSource',
+                                  style: TextStyle(
+                                    fontSize: 9.6,
+                                    color: isDone
+                                        ? Colors.grey[500]
+                                        : Colors.grey[700],
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Transform.scale(
+                          scale: 0.8,
+                          child: Checkbox(
+                            value: isDone,
+                            activeColor: Colors.green,
+                            checkColor: Colors.white,
+                            side: BorderSide(
+                              color: isDone ? Colors.green : Colors.grey[300]!,
+                              width: 1.5,
+                            ),
+                            onChanged: (bool? newValue) {
+                              _toggleItemDoneStatus(item);
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+      }
+
+      bodyContent = ListView(children: listWidgets);
     }
 
     return Scaffold(
@@ -1277,7 +1242,36 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: Colors.red,
         foregroundColor: Colors.white,
         toolbarHeight: 48,
-        title: Text(_currentListName), // Zeigt den Namen der aktuellen Liste an
+        title: GestureDetector(
+          // Wrapped the Text with GestureDetector
+          onTap: () async {
+            // Navigate to ListManagementScreen
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ListManagementScreen(
+                  allShoppingLists: _allShoppingLists,
+                  currentListName: _currentListName,
+                  onRenameList: _renameShoppingList,
+                  onDeleteList: _deleteShoppingList,
+                  onCreateNewList: _addNewShoppingList,
+                  onSaveData: _saveData,
+                  onListSelected: (listName) {
+                    setState(() {
+                      _currentListName = listName;
+                    });
+                    _saveData();
+                  },
+                ),
+              ),
+            );
+            // After returning from ListManagementScreen, re-initialize data to ensure currentListName is updated
+            _initializeData();
+          },
+          child: Text(
+            _currentListName,
+          ), // Zeigt den Namen der aktuellen Liste an
+        ),
       ),
       drawer: Drawer(
         child: Column(
@@ -1312,103 +1306,45 @@ class _HomeScreenState extends State<HomeScreen> {
               child: ListView(
                 padding: EdgeInsets.zero,
                 children: [
-                  // Liste der vorhandenen Einkaufslisten
-                  ..._allShoppingLists.keys.map((listName) {
-                    return ListTile(
-                      dense: true, // Macht das ListTile kompakter
-                      visualDensity:
-                          VisualDensity.compact, // Macht das ListTile kompakter
-                      title: Text(
-                        listName,
-                        style: const TextStyle(fontSize: 15),
-                      ), // Schriftgröße reduziert
-                      selected: _currentListName == listName,
-                      onTap: () {
-                        setState(() {
-                          _currentListName = listName;
-                          _saveData(); // Aktuellen Listennamen speichern
-                        });
-                        Navigator.pop(context); // Drawer schließen
-                      },
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Bearbeiten-Symbol (Rename)
-                          IconButton(
-                            icon: const Icon(
-                              Icons.edit,
-                              color: Colors.grey,
-                              size: 15,
-                            ), // Größe auf 75% reduziert
-                            onPressed: () {
-                              // Aufruf der Methode _showRenameListDialog
-                              _showRenameListDialog(listName);
+                  // Neuer ListTile für "Listen verwalten"
+                  ListTile(
+                    dense: true,
+                    visualDensity: VisualDensity.compact,
+                    leading: const Icon(Icons.list_alt, size: 15),
+                    title: const Text(
+                      'Listen verwalten',
+                      style: TextStyle(fontSize: 15),
+                    ),
+                    onTap: () async {
+                      Navigator.pop(context); // Drawer schließen
+                      // Navigiere zum ListManagementScreen und übergebe die benötigten Callbacks und Daten
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ListManagementScreen(
+                            allShoppingLists: _allShoppingLists,
+                            currentListName: _currentListName,
+                            onRenameList: _renameShoppingList,
+                            onDeleteList: _deleteShoppingList,
+                            onCreateNewList: _addNewShoppingList,
+                            onSaveData:
+                                _saveData, // Pass the save data callback
+                            onListSelected: (listName) {
+                              // Callback vom ListManagementScreen
+                              // Aktualisiere den Zustand hier im HomeScreen
+                              setState(() {
+                                _currentListName = listName;
+                              });
+                              _saveData(); // Speichere den neuen aktuellen Listennamen sofort
                             },
                           ),
-                          // Löschen-Symbol (Delete) - nur anzeigen, wenn mehr als eine Liste vorhanden ist
-                          _allShoppingLists.length > 1
-                              ? IconButton(
-                                  icon: const Icon(
-                                    Icons.delete,
-                                    color: Colors.grey,
-                                    size: 15,
-                                  ), // Größe auf 75% reduziert
-                                  onPressed: () {
-                                    // Bestätigungsdialog vor dem Löschen
-                                    showDialog(
-                                      context: context,
-                                      builder: (BuildContext context) {
-                                        return AlertDialog(
-                                          title: const Text('Liste löschen?'),
-                                          content: Text(
-                                            'Möchtest du die Liste "$listName" wirklich löschen?',
-                                          ),
-                                          actions: <Widget>[
-                                            TextButton(
-                                              child: const Text('Abbrechen'),
-                                              onPressed: () {
-                                                Navigator.of(context).pop();
-                                              },
-                                            ),
-                                            TextButton(
-                                              child: const Text(
-                                                'Löschen',
-                                                style: TextStyle(
-                                                  color: Colors.red,
-                                                ),
-                                              ),
-                                              onPressed: () {
-                                                _deleteShoppingList(listName);
-                                                Navigator.of(context).pop();
-                                              },
-                                            ),
-                                          ],
-                                        );
-                                      },
-                                    );
-                                  },
-                                )
-                              : const SizedBox.shrink(), // Kein Löschen-Button, wenn nur eine Liste vorhanden ist
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                  const Divider(height: 8), // Höhe reduziert
-                  ListTile(
-                    dense: true, // Macht das ListTile kompakter
-                    visualDensity:
-                        VisualDensity.compact, // Macht das ListTile kompakter
-                    leading: const Icon(
-                      Icons.add,
-                      size: 15,
-                    ), // Größe auf 75% reduziert
-                    title: const Text(
-                      'Neue Liste erstellen',
-                      style: TextStyle(fontSize: 15),
-                    ), // Schriftgröße reduziert
-                    onTap: () {
-                      // Aufruf der Methode _showCreateNewListDialog
-                      _showCreateNewListDialog();
+                        ),
+                      );
+                      // Nach Rückkehr vom ListManagementScreen:
+                      // Der HomeScreen sollte bereits durch den setState im onListSelected-Callback aktualisiert sein.
+                      // Ein erneutes _initializeData() ist nicht unbedingt notwendig, aber schadet nicht.
+                      // Ich belasse es hier zur Sicherheit, falls andere Daten auch aktualisiert werden müssen.
+                      _initializeData();
                     },
                   ),
                   const Divider(height: 8), // Höhe reduziert
@@ -1442,7 +1378,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                       );
-                      _loadData(); // Daten nach Rückkehr aus der Artikelverwaltung neu laden
+                      _initializeData(); // Daten nach Rückkehr aus der Artikelverwaltung neu laden
                     },
                   ),
                   const Divider(height: 8), // Höhe reduziert
@@ -1471,7 +1407,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                       );
-                      _loadData(); // Daten nach Rückkehr aus der Kategorienverwaltung neu laden
+                      _initializeData(); // Daten nach Rückkehr aus der Kategorienverwaltung neu laden
                     },
                   ),
                   const Divider(height: 8), // Höhe reduziert
@@ -1502,7 +1438,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                       );
-                      _loadData(); // Daten nach Rückkehr aus der Bezugsquellenverwaltung neu laden
+                      _initializeData(); // Daten nach Rückkehr aus der Bezugsquellenverwaltung neu laden
                     },
                   ),
                 ],
@@ -1624,7 +1560,7 @@ class _SelectionScreenState extends State<SelectionScreen>
     debugPrint(
       'SelectionScreen: Initial geladen mit Kategorie: $_selectedCategory',
     );
-    _scrollController = new ScrollController();
+    _scrollController = ScrollController();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToSelectedCategory();
     });
@@ -2092,10 +2028,9 @@ class SourceManagementScreen extends StatefulWidget {
 }
 
 class _SourceManagementScreenState extends State<SourceManagementScreen> {
-  final TextEditingController _newSourceController =
-      new TextEditingController();
+  final TextEditingController _newSourceController = TextEditingController();
   final TextEditingController _editSourceController =
-      new TextEditingController(); // New controller for editing
+      TextEditingController(); // New controller for editing
   List<String> _currentSources = []; // Internal list for immediate display
 
   // System-defined sources that cannot be deleted or renamed
@@ -3949,6 +3884,316 @@ class _ArticleManagementScreenState extends State<ArticleManagementScreen> {
               ), // Größe auf 75% reduziert
               onPressed: _showAddArticleDialog,
               tooltip: 'Neuen Artikel zur Masterliste hinzufügen',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// Neuer Platzhalter-Screen zur Verwaltung der Einkaufslisten
+class ListManagementScreen extends StatefulWidget {
+  final Map<String, List<Map<String, dynamic>>> allShoppingLists;
+  final String currentListName;
+  final Function(String oldName, String newName) onRenameList;
+  final Function(String listName) onDeleteList;
+  final Function(String listName) onCreateNewList;
+  final VoidCallback onSaveData;
+  final Function(String listName)
+  onListSelected; // Callback to update currentListName in HomeScreen
+
+  const ListManagementScreen({
+    super.key,
+    required this.allShoppingLists,
+    required this.currentListName,
+    required this.onRenameList,
+    required this.onDeleteList,
+    required this.onCreateNewList,
+    required this.onSaveData,
+    required this.onListSelected,
+  });
+
+  @override
+  State<ListManagementScreen> createState() => _ListManagementScreenState();
+}
+
+class _ListManagementScreenState extends State<ListManagementScreen> {
+  late String
+  _tempCurrentListName; // New local state for immediate checkbox update
+
+  @override
+  void initState() {
+    super.initState();
+    _tempCurrentListName =
+        widget.currentListName; // Initialize with parent's current list
+  }
+
+  // Dialog zum Umbenennen einer Einkaufsliste
+  Future<void> _showRenameListDialog(String oldListName) async {
+    TextEditingController _renameController = TextEditingController(
+      text: oldListName,
+    );
+    String? newListName;
+
+    await showDialog<String>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Liste umbenennen'),
+          content: TextField(
+            controller: _renameController,
+            autofocus: true,
+            decoration: const InputDecoration(hintText: 'Neuer Listenname'),
+            onChanged: (value) {
+              newListName = value;
+            },
+            onSubmitted: (value) {
+              if (value.trim().isNotEmpty) {
+                widget.onRenameList(oldListName, value.trim());
+                Navigator.of(context).pop();
+                setState(() {}); // Trigger rebuild of ListManagementScreen
+              }
+            },
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Abbrechen'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: const Text('Umbenennen'),
+              onPressed: () {
+                final String nameToUse =
+                    newListName?.trim() ?? _renameController.text.trim();
+                if (nameToUse.isNotEmpty) {
+                  widget.onRenameList(oldListName, nameToUse);
+                  Navigator.of(context).pop();
+                  setState(() {}); // Trigger rebuild of ListManagementScreen
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      duration: Duration(milliseconds: 1000),
+                      content: Text('Listenname darf nicht leer sein.'),
+                    ),
+                  );
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Dialog zum Erstellen einer neuen Einkaufsliste
+  Future<void> _showCreateNewListDialog() async {
+    TextEditingController _listNameController = TextEditingController();
+    String? newListName;
+
+    await showDialog<String>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Neue Einkaufsliste'),
+          content: TextField(
+            controller: _listNameController,
+            autofocus: true,
+            decoration: const InputDecoration(hintText: 'Listenname'),
+            onChanged: (value) {
+              newListName = value;
+            },
+            onSubmitted: (value) {
+              if (value.trim().isNotEmpty) {
+                widget.onCreateNewList(value.trim());
+                Navigator.of(context).pop();
+                setState(() {}); // Trigger rebuild of ListManagementScreen
+              }
+            },
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Abbrechen'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: const Text('Erstellen'),
+              onPressed: () {
+                if (newListName != null && newListName!.trim().isNotEmpty) {
+                  widget.onCreateNewList(newListName!.trim());
+                  Navigator.of(context).pop();
+                  setState(() {}); // Trigger rebuild of ListManagementScreen
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Listenname darf nicht leer sein.'),
+                      duration: Duration(milliseconds: 1000),
+                    ),
+                  );
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Sort the list names alphabetically
+    List<String> sortedListNames = widget.allShoppingLists.keys.toList();
+    sortedListNames.sort();
+
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.red,
+        foregroundColor: Colors.white,
+        title: const Text('Listen verwalten'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
+      ),
+      body: sortedListNames.isEmpty
+          ? const Center(
+              child: Text(
+                'Noch keine Listen vorhanden. Erstelle eine neue Liste!',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+            )
+          : ListView.builder(
+              itemCount: sortedListNames.length,
+              itemBuilder: (context, index) {
+                final listName = sortedListNames[index];
+                final bool isCurrent =
+                    _tempCurrentListName ==
+                    listName; // Use local state for checkbox value
+
+                return Dismissible(
+                  key: Key(listName), // Unique key for Dismissible
+                  direction: DismissDirection
+                      .endToStart, // Swipe from right to left to delete
+                  background: Container(
+                    color: Colors.red,
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: const Icon(
+                      Icons.delete,
+                      color: Colors.white,
+                      size: 22.5,
+                    ),
+                  ),
+                  confirmDismiss: (direction) async {
+                    if (widget.allShoppingLists.length == 1) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          duration: Duration(milliseconds: 1500),
+                          content: Text(
+                            'Die letzte Liste kann nicht gelöscht werden.',
+                          ),
+                        ),
+                      );
+                      return false; // Prevent dismissal
+                    }
+                    final bool? confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          title: const Text('Liste löschen?'),
+                          content: Text(
+                            'Möchtest du die Liste "$listName" wirklich löschen?',
+                          ),
+                          actions: <Widget>[
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(false),
+                              child: const Text('Abbrechen'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(true),
+                              child: const Text(
+                                'Löschen',
+                                style: TextStyle(color: Colors.red),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                    return confirm ?? false;
+                  },
+                  onDismissed: (direction) {
+                    if (direction == DismissDirection.endToStart) {
+                      widget.onDeleteList(listName);
+                      setState(() {}); // Trigger rebuild to reflect deletion
+                    }
+                  },
+                  child: ListTile(
+                    dense: true,
+                    visualDensity: VisualDensity.compact,
+                    title: Text(
+                      listName,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: isCurrent
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                      ),
+                    ),
+                    // No 'selected' property here, as selection is now via checkbox
+                    onTap: () {
+                      // Tapping the title now triggers rename
+                      _showRenameListDialog(listName);
+                    },
+                    trailing: Transform.scale(
+                      scale: 0.8, // Make checkbox slightly smaller
+                      child: Checkbox(
+                        value: isCurrent,
+                        activeColor: Colors.red, // Use red for active checkbox
+                        checkColor: Colors.white,
+                        onChanged: (bool? newValue) {
+                          if (newValue == true && !isCurrent) {
+                            setState(() {
+                              _tempCurrentListName =
+                                  listName; // Update local state immediately
+                            });
+                            // Inform parent and then pop after a small delay
+                            widget.onListSelected(listName);
+                            Future.delayed(
+                              const Duration(milliseconds: 200),
+                              () {
+                                Navigator.pop(context);
+                              },
+                            );
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+      bottomNavigationBar: BottomAppBar(
+        color: Colors.red,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            IconButton(
+              icon: const Icon(Icons.add, color: Colors.white, size: 21),
+              onPressed: () async {
+                await _showCreateNewListDialog();
+                // After dialog closes, the list in HomeScreen is updated via callback.
+                // We need to trigger a rebuild of this screen to reflect the changes.
+                setState(() {});
+              },
+              tooltip: 'Neue Liste erstellen',
             ),
           ],
         ),
