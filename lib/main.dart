@@ -974,11 +974,17 @@ class _HomeScreenState extends State<HomeScreen> {
       if (itemCategory != currentCategoryHeader) {
         widgets.add(
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            padding: const EdgeInsets.fromLTRB(
+              16,
+              8,
+              16,
+              4,
+            ), // Padding zurückgesetzt
             child: Text(
               itemCategory,
               style: TextStyle(
-                fontSize: 20,
+                fontSize:
+                    14.4, // Font-Größe der Kategorienüberschrift auf 80% (18 * 0.8)
                 fontWeight: FontWeight.bold,
                 color: itemColor, // Kategorie-Farbe für den Header
               ),
@@ -999,23 +1005,27 @@ class _HomeScreenState extends State<HomeScreen> {
           // Hintergrund für Wischen nach rechts (Erledigt/Unerledigt)
           background: Container(
             color: isDone
-                ? Colors.orange
+                ? Colors.grey
                 : Colors
-                      .green, // Farbe je nach Status (unerledigt -> erledigt: grün; erledigt -> unerledigt: orange)
-            alignment: Alignment.centerRight, // Icon rechts ausrichten
+                      .green, // Farbe je nach Status (unerledigt -> erledigt: grün; erledigt -> unerledigt: grau)
+            alignment: Alignment.centerLeft, // Icon links ausrichten
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Icon(
               isDone ? Icons.undo : Icons.check,
               color: Colors.white,
-              size: 36,
-            ), // Icon je nach Status
+              size: 22.5,
+            ), // Icon Größe auf 75% reduziert
           ),
           // Sekundärer Hintergrund für Wischen nach links (Löschen)
           secondaryBackground: Container(
             color: Colors.red,
             alignment: Alignment.centerRight, // Icon rechts ausrichten
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: const Icon(Icons.delete, color: Colors.white, size: 36),
+            child: const Icon(
+              Icons.delete,
+              color: Colors.white,
+              size: 22.5,
+            ), // Icon Größe auf 75% reduziert
           ),
           onDismissed: (direction) {
             // onDismissed wird nur für die Löschfunktion verwendet, da confirmDismiss den Statuswechsel handhabt
@@ -1082,71 +1092,89 @@ class _HomeScreenState extends State<HomeScreen> {
             return true;
           },
           child: Card(
-            margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            elevation: 2,
+            margin: const EdgeInsets.symmetric(
+              horizontal: 4,
+              vertical: 2.0,
+            ), // Vertical margin set to 2.0
+            elevation: 1, // Elevation reduziert
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(4),
-              side: BorderSide(color: itemColor, width: 2.0),
+              side: BorderSide(
+                color: itemColor,
+                width: 1.5,
+              ), // Rahmenbreite reduziert
             ),
             color: Colors.white,
-            child: ListTile(
-              // Ersetzt CheckboxListTile
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 8,
-                vertical: 2,
-              ),
-              title: Text(
-                item['name']!,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: isDone
-                      ? Colors.grey
-                      : Colors.black, // Textfarbe ändern
-                  decoration: isDone
-                      ? TextDecoration.lineThrough
-                      : TextDecoration.none, // Durchstreichen
-                ),
-              ),
-              subtitle: GestureDetector(
-                // Wrap subtitle with GestureDetector for tap
-                onTap: () {
-                  _showSourceSelectionDialogForHome(
-                    item,
-                  ); // Open source selection dialog
-                },
-                child: Text(
-                  'Bezugsquelle: $itemSource', // Display source
-                  style: TextStyle(
-                    color: isDone ? Colors.grey[500] : Colors.grey[700],
-                    fontStyle: FontStyle.italic, // Make it look tappable
-                  ),
-                ),
-              ),
-              trailing: Transform.scale(
-                // Skaliert die Checkbox
-                scale: 2.0, // Doppelte Größe
-                child: Checkbox(
-                  value: isDone, // Status der Checkbox
-                  activeColor: Colors
-                      .green, // Farbe des Hakens und des ausgefüllten Kästchens, wenn erledigt
-                  checkColor: Colors.white, // Farbe des Hakens
-                  side: BorderSide(
-                    // Angepasster Rahmen für unerledigten Zustand
-                    color: isDone
-                        ? Colors.green
-                        : Colors.grey[300]!, // Hellgrau, wenn unerledigt
-                    width: 2.0,
-                  ),
-                  onChanged: (bool? newValue) {
-                    _toggleItemDoneStatus(item); // Status umschalten
-                  },
-                ),
-              ),
+            child: InkWell(
+              // Wrap with InkWell for onTap functionality
               onTap: () {
                 // Fügt onTap für die gesamte Zeile hinzu
                 _toggleItemDoneStatus(item);
               },
+              child: Padding(
+                // Add Padding around the custom content
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 0.5,
+                ), // Abstand nach oben und unten halbiert (war 1.0)
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize
+                            .min, // Make column take minimum vertical space
+                        children: [
+                          Text(
+                            item['name']!,
+                            style: TextStyle(
+                              fontSize:
+                                  13.2, // Font-Größe des Artikels um 10% größer (12 * 1.1)
+                              fontWeight: FontWeight.bold,
+                              color: isDone ? Colors.grey : Colors.black,
+                              decoration: isDone
+                                  ? TextDecoration.lineThrough
+                                  : TextDecoration.none,
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () {
+                              _showSourceSelectionDialogForHome(item);
+                            },
+                            child: Text(
+                              'Bezugsquelle: $itemSource',
+                              style: TextStyle(
+                                fontSize:
+                                    9.6, // Font-Größe der Bezugsquelle 20% größer (8 * 1.2)
+                                color: isDone
+                                    ? Colors.grey[500]
+                                    : Colors.grey[700],
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Checkbox on the right
+                    Transform.scale(
+                      scale: 0.8, // Further reduce scale for checkbox
+                      child: Checkbox(
+                        value: isDone,
+                        activeColor: Colors.green,
+                        checkColor: Colors.white,
+                        side: BorderSide(
+                          color: isDone ? Colors.green : Colors.grey[300]!,
+                          width: 1.5,
+                        ),
+                        onChanged: (bool? newValue) {
+                          _toggleItemDoneStatus(item);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
@@ -1263,15 +1291,18 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     const Text(
                       'Einkaufslisten',
-                      style: TextStyle(color: Colors.white, fontSize: 24),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                      ), // Schriftgröße reduziert
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4), // Höhe reduziert
                     Text(
                       'Aktuell: $_currentListName',
                       style: const TextStyle(
                         color: Colors.white70,
-                        fontSize: 16,
-                      ),
+                        fontSize: 14,
+                      ), // Schriftgröße reduziert
                     ),
                   ],
                 ),
@@ -1284,7 +1315,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   // Liste der vorhandenen Einkaufslisten
                   ..._allShoppingLists.keys.map((listName) {
                     return ListTile(
-                      title: Text(listName),
+                      dense: true, // Macht das ListTile kompakter
+                      visualDensity:
+                          VisualDensity.compact, // Macht das ListTile kompakter
+                      title: Text(
+                        listName,
+                        style: const TextStyle(fontSize: 15),
+                      ), // Schriftgröße reduziert
                       selected: _currentListName == listName,
                       onTap: () {
                         setState(() {
@@ -1298,7 +1335,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         children: [
                           // Bearbeiten-Symbol (Rename)
                           IconButton(
-                            icon: const Icon(Icons.edit, color: Colors.grey),
+                            icon: const Icon(
+                              Icons.edit,
+                              color: Colors.grey,
+                              size: 15,
+                            ), // Größe auf 75% reduziert
                             onPressed: () {
                               // Aufruf der Methode _showRenameListDialog
                               _showRenameListDialog(listName);
@@ -1310,7 +1351,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                   icon: const Icon(
                                     Icons.delete,
                                     color: Colors.grey,
-                                  ),
+                                    size: 15,
+                                  ), // Größe auf 75% reduziert
                                   onPressed: () {
                                     // Bestätigungsdialog vor dem Löschen
                                     showDialog(
@@ -1351,22 +1393,37 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     );
                   }).toList(),
-                  const Divider(),
+                  const Divider(height: 8), // Höhe reduziert
                   ListTile(
-                    leading: const Icon(Icons.add),
-                    title: const Text('Neue Liste erstellen'),
+                    dense: true, // Macht das ListTile kompakter
+                    visualDensity:
+                        VisualDensity.compact, // Macht das ListTile kompakter
+                    leading: const Icon(
+                      Icons.add,
+                      size: 15,
+                    ), // Größe auf 75% reduziert
+                    title: const Text(
+                      'Neue Liste erstellen',
+                      style: TextStyle(fontSize: 15),
+                    ), // Schriftgröße reduziert
                     onTap: () {
                       // Aufruf der Methode _showCreateNewListDialog
                       _showCreateNewListDialog();
                     },
                   ),
-                  const Divider(),
-                  // Removed the "Neuen Artikel hinzufügen" ListTile
+                  const Divider(height: 8), // Höhe reduziert
                   ListTile(
+                    dense: true, // Macht das ListTile kompakter
+                    visualDensity:
+                        VisualDensity.compact, // Macht das ListTile kompakter
                     leading: const Icon(
                       Icons.article,
-                    ), // New icon for Article Management
-                    title: const Text('Artikel verwalten'),
+                      size: 15,
+                    ), // Größe auf 75% reduziert
+                    title: const Text(
+                      'Artikel verwalten',
+                      style: TextStyle(fontSize: 15),
+                    ), // Schriftgröße reduziert
                     onTap: () async {
                       Navigator.pop(context); // Close drawer
                       await Navigator.push(
@@ -1388,10 +1445,19 @@ class _HomeScreenState extends State<HomeScreen> {
                       _loadData(); // Daten nach Rückkehr aus der Artikelverwaltung neu laden
                     },
                   ),
-                  const Divider(),
+                  const Divider(height: 8), // Höhe reduziert
                   ListTile(
-                    leading: const Icon(Icons.category), // Icon für Kategorien
-                    title: const Text('Kategorien verwalten'),
+                    dense: true, // Macht das ListTile kompakter
+                    visualDensity:
+                        VisualDensity.compact, // Macht das ListTile kompakter
+                    leading: const Icon(
+                      Icons.category,
+                      size: 15,
+                    ), // Größe auf 75% reduziert
+                    title: const Text(
+                      'Kategorien verwalten',
+                      style: TextStyle(fontSize: 15),
+                    ), // Schriftgröße reduziert
                     onTap: () async {
                       Navigator.pop(context); // Drawer schließen
                       await Navigator.push(
@@ -1408,10 +1474,19 @@ class _HomeScreenState extends State<HomeScreen> {
                       _loadData(); // Daten nach Rückkehr aus der Kategorienverwaltung neu laden
                     },
                   ),
-                  const Divider(),
+                  const Divider(height: 8), // Höhe reduziert
                   ListTile(
-                    leading: const Icon(Icons.store),
-                    title: const Text('Bezugsquellen verwalten'),
+                    dense: true, // Macht das ListTile kompakter
+                    visualDensity:
+                        VisualDensity.compact, // Macht das ListTile kompakter
+                    leading: const Icon(
+                      Icons.store,
+                      size: 15,
+                    ), // Größe auf 75% reduziert
+                    title: const Text(
+                      'Bezugsquellen verwalten',
+                      style: TextStyle(fontSize: 15),
+                    ), // Schriftgröße reduziert
                     onTap: () async {
                       Navigator.pop(context);
                       await Navigator.push(
@@ -1450,7 +1525,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ? Icons.visibility
                     : Icons.visibility_off, // Icon wechselt je nach Zustand
                 color: Colors.white,
-                size: 30,
+                size: 21, // Größe auf 75% reduziert
               ),
               onPressed: () {
                 setState(() {
@@ -1464,7 +1539,11 @@ class _HomeScreenState extends State<HomeScreen> {
             // Undo-Button (nur sichtbar, wenn ein Artikel gelöscht wurde)
             if (_lastDeletedItem != null)
               IconButton(
-                icon: const Icon(Icons.undo, color: Colors.white, size: 30),
+                icon: const Icon(
+                  Icons.undo,
+                  color: Colors.white,
+                  size: 21,
+                ), // Größe auf 75% reduziert
                 onPressed: _restoreLastDeletedItem,
                 tooltip: 'Gelöschten Artikel wiederherstellen',
               ),
@@ -1474,8 +1553,8 @@ class _HomeScreenState extends State<HomeScreen> {
               icon: const Icon(
                 Icons.add,
                 color: Colors.white,
-                size: 30,
-              ), // Einfaches Plus-Icon, Größe angepasst
+                size: 21,
+              ), // Größe auf 75% reduziert
               onPressed:
                   _navigateToAddItemScreen, // Ruft die gleiche Funktion wie der FAB auf
               tooltip: 'Element hinzufügen',
@@ -1529,11 +1608,14 @@ class SelectionScreen extends StatefulWidget {
   State<SelectionScreen> createState() => _SelectionScreenState();
 }
 
-class _SelectionScreenState extends State<SelectionScreen> {
+class _SelectionScreenState extends State<SelectionScreen>
+    with SingleTickerProviderStateMixin {
   // _categorizedItems ist jetzt global definiert und wird nicht mehr hier verwaltet.
 
   late String _selectedCategory;
   late ScrollController _scrollController;
+  late AnimationController _animationController;
+  late Animation<Color?> _colorAnimation;
 
   @override
   void initState() {
@@ -1546,11 +1628,42 @@ class _SelectionScreenState extends State<SelectionScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToSelectedCategory();
     });
+
+    // Initialize AnimationController for the "Alle anzeigen" text
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1), // Animation duration
+    );
+
+    // Define the color animation (fading between dark blue and white)
+    _colorAnimation = ColorTween(
+      begin: Colors.blue.shade800, // Dark blue
+      end: Colors.white, // White
+    ).animate(_animationController);
+
+    // Start repeating the animation if a specific category is already selected
+    if (_selectedCategory != 'Alle') {
+      _animationController.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant SelectionScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Control animation based on _selectedCategory
+    if (_selectedCategory != 'Alle' && !_animationController.isAnimating) {
+      _animationController.repeat(reverse: true);
+    } else if (_selectedCategory == 'Alle' &&
+        _animationController.isAnimating) {
+      _animationController.stop();
+      _animationController.reset();
+    }
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
+    _animationController.dispose(); // Dispose the animation controller
     super.dispose();
   }
 
@@ -1715,14 +1828,24 @@ class _SelectionScreenState extends State<SelectionScreen> {
               );
               setState(() {
                 _selectedCategory = itemCategory;
+                // Start animation when a specific category is selected
+                if (_selectedCategory != 'Alle') {
+                  _animationController.repeat(reverse: true);
+                }
               });
             },
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              padding: const EdgeInsets.fromLTRB(
+                16,
+                8,
+                16,
+                4,
+              ), // Padding zurückgesetzt
               child: Text(
                 itemCategory,
                 style: TextStyle(
-                  fontSize: 20,
+                  fontSize:
+                      14.4, // Font-Größe der Kategorienüberschrift auf 80% (18 * 0.8)
                   fontWeight: FontWeight.bold,
                   color: itemColor,
                 ),
@@ -1735,77 +1858,90 @@ class _SelectionScreenState extends State<SelectionScreen> {
 
       widgets.add(
         Card(
-          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          elevation: 2,
+          margin: const EdgeInsets.symmetric(
+            horizontal: 4,
+            vertical: 2.0,
+          ), // Vertical margin set to 2.0
+          elevation: 1, // Elevation reduziert
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(4),
             side: BorderSide(
               color: isDuplicate ? Colors.grey : itemColor,
-              width: 2.0,
-            ), // Rahmenfarbe anpassen
+              width: 1.5,
+            ), // Rahmenbreite reduziert
           ),
           color: isDuplicate
               ? Colors.grey[200]
               : Colors.white, // Hintergrundfarbe anpassen
-          child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(
+          child: Padding(
+            // Add Padding around the custom content
+            padding: const EdgeInsets.symmetric(
               horizontal: 8,
-              vertical: 2,
-            ),
-            title: Text(
-              item['name']!,
-              style: TextStyle(
-                fontSize: 18,
-                color: isDuplicate
-                    ? Colors.grey[600]
-                    : Colors.black, // Textfarbe anpassen
-                decoration: isDuplicate
-                    ? TextDecoration.lineThrough
-                    : TextDecoration.none, // Durchstreichen
-              ),
-            ),
-            subtitle: GestureDetector(
-              // Wrap subtitle with GestureDetector for tap
-              onTap: () {
-                _showSourceSelectionDialog(
-                  item,
-                ); // Open source selection dialog
-              },
-              child: Text(
-                'Bezugsquelle: $itemSource', // Display source
-                style: TextStyle(
-                  color: Colors.grey[700],
-                  fontStyle: FontStyle.italic,
+              vertical: 0.5,
+            ), // Abstand nach oben und unten halbiert (was 1.0)
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize
+                        .min, // Make column take minimum vertical space
+                    children: [
+                      Text(
+                        item['name']!,
+                        style: TextStyle(
+                          fontSize:
+                              13.2, // Font-Größe des Artikels um 10% größer (12 * 1.1)
+                          fontWeight: FontWeight.bold,
+                          color: isDuplicate ? Colors.grey[600] : Colors.black,
+                          decoration: isDuplicate
+                              ? TextDecoration.lineThrough
+                              : TextDecoration.none,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          _showSourceSelectionDialog(item);
+                        },
+                        child: Text(
+                          'Bezugsquelle: $itemSource',
+                          style: TextStyle(
+                            fontSize:
+                                9.6, // Font-Größe der Bezugsquelle 20% größer (8 * 1.2)
+                            color: Colors.grey[700],
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ),
-            trailing: IconButton(
-              icon: Icon(
-                isDuplicate
-                    ? Icons.check_circle_outline
-                    : Icons.add_circle, // Icon ändern
-                color: isDuplicate
-                    ? Colors.grey[600]
-                    : itemColor, // Iconfarbe anpassen
-              ),
-              onPressed:
-                  isDuplicate // onPressed deaktivieren, wenn Duplikat
-                  ? null
-                  : () {
-                      debugPrint(
-                        'Plus-Knopf für Artikel "${item['name']}" getippt. Füge Artikel hinzu und bleibe auf dem Screen.',
-                      );
-                      // Artikel mit isDone: false hinzufügen
-                      widget.onItemAdded({
-                        'name': item['name'],
-                        'category': item['category'],
-                        'isDone': false,
-                        'source': item['source'],
-                      });
-                      // KEIN Navigator.pop hier, um auf dem SelectionScreen zu bleiben
-                      // setState aufrufen, um den "ausgegrauten" Zustand zu aktualisieren
-                      setState(() {});
-                    },
+                IconButton(
+                  icon: Icon(
+                    isDuplicate ? Icons.check_circle_outline : Icons.add_circle,
+                    color: isDuplicate ? Colors.grey[600] : itemColor,
+                    size: 18, // Further reduce icon size
+                  ),
+                  onPressed:
+                      isDuplicate // onPressed deaktivieren, wenn Duplikat
+                      ? null
+                      : () {
+                          debugPrint(
+                            'Plus-Knopf für Artikel "${item['name']}" getippt. Füge Artikel hinzu und bleibe auf dem Screen.',
+                          );
+                          // Artikel mit isDone: false hinzufügen
+                          widget.onItemAdded({
+                            'name': item['name'],
+                            'category': item['category'],
+                            'isDone': false,
+                            'source': item['source'],
+                          });
+                          // KEIN Navigator.pop hier, um auf dem SelectionScreen zu bleiben
+                          // setState aufrufen, um den "ausgegrauten" Zustand zu aktualisieren
+                          setState(() {});
+                        },
+                ),
+              ],
             ),
           ),
         ),
@@ -1816,10 +1952,8 @@ class _SelectionScreenState extends State<SelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    List<String> categoryButtonKeys = ['Alle'];
-    categoryButtonKeys.addAll(
-      _categoryColors.keys.where((k) => k != 'Alle').toList(),
-    ); // Use global _categoryColors
+    // List<String> categoryButtonKeys = ['Alle']; // This list is no longer needed for buttons
+    // categoryButtonKeys.addAll(_categoryColors.keys.where((k) => k != 'Alle').toList()); // Use global _categoryColors
 
     return Scaffold(
       appBar: AppBar(
@@ -1836,94 +1970,36 @@ class _SelectionScreenState extends State<SelectionScreen> {
             Navigator.pop(context, _selectedCategory);
           },
         ),
+        actions: [
+          if (_selectedCategory !=
+              'Alle') // Only show if a specific category is selected
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _selectedCategory = 'Alle';
+                  _animationController.stop(); // Stop animation immediately
+                  _animationController
+                      .reset(); // Reset animation to initial state
+                });
+              },
+              child: AnimatedBuilder(
+                animation: _colorAnimation,
+                builder: (context, child) {
+                  return Text(
+                    'Alle anzeigen',
+                    style: TextStyle(
+                      color: _colorAnimation.value,
+                      fontSize: 14,
+                    ),
+                  );
+                },
+              ),
+            ),
+        ],
       ),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8.0),
-            child: Row(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                  child: ElevatedButton(
-                    onPressed: () {
-                      debugPrint(
-                        'Kategorie-Button "Alle" getippt. Ändere Filter auf Alle.',
-                      );
-                      setState(() {
-                        _selectedCategory = 'Alle';
-                      });
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _getButtonBackgroundColor(
-                        _categoryColors['Alle']!,
-                        (_selectedCategory == 'Alle'),
-                        'Alle',
-                      ),
-                      foregroundColor: _getButtonForegroundColor(
-                        (_selectedCategory == 'Alle'),
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 10,
-                      ),
-                    ),
-                    child: const Text('Alle'),
-                  ),
-                ),
-                Expanded(
-                  child: SingleChildScrollView(
-                    controller: _scrollController,
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                    child: Row(
-                      children: categoryButtonKeys.where((k) => k != 'Alle').map((
-                        category,
-                      ) {
-                        final bool isSelected = (_selectedCategory == category);
-                        final Color categoryColor =
-                            _categoryColors[category] ?? Colors.grey;
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                          child: ElevatedButton(
-                            onPressed: () {
-                              debugPrint(
-                                'Kategorie-Button "$category" getippt. Ändere Filter auf $category.',
-                              );
-                              setState(() {
-                                _selectedCategory = category;
-                              });
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: _getButtonBackgroundColor(
-                                categoryColor,
-                                isSelected,
-                                category,
-                              ),
-                              foregroundColor: _getButtonForegroundColor(
-                                isSelected,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 10,
-                              ),
-                            ),
-                            child: Text(category),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          // Removed the Padding containing the Row of category ElevatedButton's
           Expanded(child: ListView(children: _buildSelectionListItems())),
         ],
       ),
@@ -1940,7 +2016,11 @@ class _SelectionScreenState extends State<SelectionScreen> {
           children: <Widget>[
             // Icon zum Hinzufügen eines neuen Artikels (ersetzt den FAB)
             IconButton(
-              icon: const Icon(Icons.add, color: Colors.white, size: 30),
+              icon: const Icon(
+                Icons.add,
+                color: Colors.white,
+                size: 21,
+              ), // Größe auf 75% reduziert
               onPressed: () async {
                 debugPrint(
                   'BottomAppBar "Neuen Artikel hinzufügen" getippt. Navigiere zu Artikel verwalten.',
@@ -1969,7 +2049,11 @@ class _SelectionScreenState extends State<SelectionScreen> {
             ),
             // "Done"-Icon
             IconButton(
-              icon: const Icon(Icons.check, color: Colors.white, size: 30),
+              icon: const Icon(
+                Icons.check,
+                color: Colors.white,
+                size: 21,
+              ), // Größe auf 75% reduziert
               onPressed: () {
                 debugPrint(
                   'Done-Icon getippt. Rückgabe: Filter: $_selectedCategory.',
@@ -1985,8 +2069,6 @@ class _SelectionScreenState extends State<SelectionScreen> {
     );
   }
 }
-
-// Removed the NewArticleScreen class as it's no longer needed.
 
 // Neuer Screen zur Verwaltung der Bezugsquellen
 class SourceManagementScreen extends StatefulWidget {
@@ -2268,8 +2350,8 @@ class _SourceManagementScreenState extends State<SourceManagementScreen> {
                     child: const Icon(
                       Icons.delete,
                       color: Colors.white,
-                      size: 36,
-                    ),
+                      size: 22.5,
+                    ), // Größe auf 75% reduziert
                   ),
                   confirmDismiss: (direction) async {
                     if (isSystemSource) {
@@ -2326,22 +2408,15 @@ class _SourceManagementScreenState extends State<SourceManagementScreen> {
                   },
                   child: Card(
                     margin: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    elevation: 2,
+                      horizontal: 4,
+                      vertical: 2.0,
+                    ), // Consistent margin
+                    elevation: 1, // Consistent elevation
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: ListTile(
-                      title: Text(
-                        source,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      // Removed trailing IconButton for renaming
+                    child: InkWell(
+                      // Use InkWell for tap feedback
                       onTap: isSystemSource
                           ? null // Disable tap for system sources
                           : () {
@@ -2350,6 +2425,25 @@ class _SourceManagementScreenState extends State<SourceManagementScreen> {
                                 index,
                               ); // Show rename dialog on tap
                             },
+                      child: Padding(
+                        // Add Padding for consistent internal spacing
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 0.5,
+                        ), // Consistent vertical padding
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                source,
+                                style: const TextStyle(
+                                  fontSize: 15.4,
+                                ), // Font not bold
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 );
@@ -2362,7 +2456,11 @@ class _SourceManagementScreenState extends State<SourceManagementScreen> {
           mainAxisAlignment: MainAxisAlignment.center, // Center the button
           children: <Widget>[
             IconButton(
-              icon: const Icon(Icons.add, color: Colors.white, size: 30),
+              icon: const Icon(
+                Icons.add,
+                color: Colors.white,
+                size: 21,
+              ), // Größe auf 75% reduziert
               onPressed: () async {
                 // Await the result
                 // Call _showAddSourceDialog to add a new source
@@ -2502,9 +2600,12 @@ class __SourceSelectionBottomSheetState
         children: [
           const Text(
             'Bezugsquelle wählen',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ), // Schriftgröße reduziert
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8), // Höhe reduziert
           Expanded(
             child: ListView.builder(
               shrinkWrap: true,
@@ -2515,10 +2616,16 @@ class __SourceSelectionBottomSheetState
                 if (index < displaySources.length) {
                   final source = displaySources[index];
                   return ListTile(
-                    title: Text(source),
+                    dense: true, // Macht das ListTile kompakter
+                    visualDensity:
+                        VisualDensity.compact, // Macht das ListTile kompakter
+                    title: Text(
+                      source,
+                      style: const TextStyle(fontSize: 11),
+                    ), // Schriftgröße auf 75% reduziert
                     trailing: _selectedSource == source
-                        ? const Icon(Icons.check, color: Colors.cyan)
-                        : null,
+                        ? const Icon(Icons.check, color: Colors.cyan, size: 15)
+                        : null, // Größe auf 75% reduziert
                     onTap: () {
                       widget.onSourceSelected(
                         source,
@@ -2528,8 +2635,17 @@ class __SourceSelectionBottomSheetState
                 } else {
                   // "Neue Bezugsquelle hinzufügen..." option
                   return ListTile(
-                    leading: const Icon(Icons.add),
-                    title: const Text('Neue Bezugsquelle hinzufügen...'),
+                    dense: true, // Macht das ListTile kompakter
+                    visualDensity:
+                        VisualDensity.compact, // Macht das ListTile kompakter
+                    leading: const Icon(
+                      Icons.add,
+                      size: 15,
+                    ), // Größe auf 75% reduziert
+                    title: const Text(
+                      'Neue Bezugsquelle hinzufügen...',
+                      style: TextStyle(fontSize: 11),
+                    ), // Schriftgröße auf 75% reduziert
                     onTap: () async {
                       final String? newlyAddedSource =
                           await _showAddSourceDialogForBottomSheet();
@@ -2683,8 +2799,8 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
                         });
                       },
                       child: Container(
-                        width: 40,
-                        height: 40,
+                        width: 27, // Größe auf 75% reduziert
+                        height: 27, // Größe auf 75% reduziert
                         decoration: BoxDecoration(
                           color: color,
                           shape: BoxShape.circle,
@@ -2692,7 +2808,7 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
                             color: _selectedNewCategoryColor == color
                                 ? Colors.black
                                 : Colors.transparent,
-                            width: 3.0,
+                            width: 2, // Breite auf 75% reduziert
                           ),
                         ),
                       ),
@@ -2810,8 +2926,8 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
                         });
                       },
                       child: Container(
-                        width: 40,
-                        height: 40,
+                        width: 27, // Größe auf 75% reduziert
+                        height: 27, // Größe auf 75% reduziert
                         decoration: BoxDecoration(
                           color: color,
                           shape: BoxShape.circle,
@@ -2819,7 +2935,7 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
                             color: _selectedEditCategoryColor == color
                                 ? Colors.black
                                 : Colors.transparent,
-                            width: 3.0,
+                            width: 2, // Breite auf 75% reduziert
                           ),
                         ),
                       ),
@@ -2929,8 +3045,8 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
                     child: const Icon(
                       Icons.delete,
                       color: Colors.white,
-                      size: 36,
-                    ),
+                      size: 22.5,
+                    ), // Größe auf 75% reduziert
                   ),
                   confirmDismiss: (direction) async {
                     if (isSystemCategory) {
@@ -2986,32 +3102,42 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
                   },
                   child: Card(
                     margin: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    elevation: 2,
+                      horizontal: 4,
+                      vertical: 2.0,
+                    ), // Consistent margin
+                    elevation: 1, // Consistent elevation
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(4),
+                      side: BorderSide(
+                        color: _categoryColors[category] ?? Colors.grey,
+                        width: 1.5,
+                      ), // Add border with category color
                     ),
-                    child: ListTile(
-                      title: Text(
-                        category,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      trailing: Container(
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          color: _categoryColors[category] ?? Colors.grey,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
+                    child: InkWell(
+                      // Use InkWell for tap feedback
                       onTap: () {
                         _showEditCategoryDialog(category, index);
                       },
+                      child: Padding(
+                        // Add Padding for consistent internal spacing
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 0.5,
+                        ), // Consistent vertical padding
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                category,
+                                style: const TextStyle(
+                                  fontSize: 15.4,
+                                ), // Font not bold
+                              ),
+                            ),
+                            // Removed trailing color container
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 );
@@ -3023,7 +3149,11 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             IconButton(
-              icon: const Icon(Icons.add, color: Colors.white, size: 30),
+              icon: const Icon(
+                Icons.add,
+                color: Colors.white,
+                size: 21,
+              ), // Größe auf 75% reduziert
               onPressed: () async {
                 // Await the result
                 final String? newCategory = await _showAddCategoryDialog();
@@ -3353,6 +3483,253 @@ class _ArticleManagementScreenState extends State<ArticleManagementScreen> {
     );
   }
 
+  // Dialog to edit an existing article in the master list
+  Future<void> _showEditArticleDialog(
+    Map<String, dynamic> articleToEdit,
+  ) async {
+    _articleNameController.text = articleToEdit['name']!;
+    _selectedCategoryForDialog = articleToEdit['category']!;
+    _selectedSourceForDialog = articleToEdit['source']!;
+    await _loadLocalSourcesForDialog(); // Ensure sources are up-to-date before opening dialog
+
+    await showDialog<void>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            List<String> dropdownCategories = List.from(
+              _categoryColors.keys.toList(),
+            );
+            if (dropdownCategories.contains('Ohne')) {
+              dropdownCategories.remove('Ohne');
+              dropdownCategories.insert(0, 'Ohne');
+            }
+            dropdownCategories.remove('Alle');
+            dropdownCategories.remove('Uncategorized');
+            dropdownCategories.add('__MANAGE_CATEGORIES__');
+
+            List<String> dropdownSources = List.from(
+              _localAvailableSourcesForDialog,
+            );
+            dropdownSources.add('__MANAGE_SOURCES__');
+
+            return AlertDialog(
+              title: const Text('Artikel bearbeiten'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: _articleNameController,
+                      decoration: InputDecoration(
+                        labelText: 'Artikelname',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    DropdownButtonFormField<String>(
+                      value: _selectedCategoryForDialog,
+                      decoration: InputDecoration(
+                        labelText: 'Kategorie',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      items: dropdownCategories.map((String category) {
+                        return DropdownMenuItem<String>(
+                          value: category,
+                          child: Text(
+                            category == '__MANAGE_CATEGORIES__'
+                                ? 'Neue Kategorie anlegen...'
+                                : category,
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) async {
+                        if (newValue == '__MANAGE_CATEGORIES__') {
+                          final String? newCategoryName = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => CategoryManagementScreen(
+                                availableCategories: _categoryColors.keys
+                                    .toList(),
+                                onNewCategoryCreated:
+                                    widget.onNewCategoryCreated,
+                                onCategoryDeleted: widget.onCategoryDeleted,
+                                onCategoryRenamed: widget.onCategoryRenamed,
+                              ),
+                            ),
+                          );
+                          if (newCategoryName != null) {
+                            setState(() {
+                              _selectedCategoryForDialog = newCategoryName;
+                            });
+                          }
+                        } else {
+                          setState(() {
+                            _selectedCategoryForDialog = newValue!;
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    DropdownButtonFormField<String>(
+                      value: _selectedSourceForDialog,
+                      decoration: InputDecoration(
+                        labelText: 'Bezugsquelle',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      items: dropdownSources.map((String source) {
+                        return DropdownMenuItem<String>(
+                          value: source,
+                          child: Text(
+                            source == '__MANAGE_SOURCES__'
+                                ? 'Neue Bezugsquelle hinzufügen...'
+                                : source,
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) async {
+                        if (newValue == '__MANAGE_SOURCES__') {
+                          final String? newSourceName = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => SourceManagementScreen(
+                                availableSources: widget.availableSources,
+                                onNewSourceCreated: widget.onNewSourceCreated,
+                                onSourceDeleted: widget.onSourceDeleted,
+                                onSourceRenamed: widget.onSourceRenamed,
+                              ),
+                            ),
+                          );
+                          if (newSourceName != null) {
+                            await _loadLocalSourcesForDialog();
+                            setState(() {
+                              _selectedSourceForDialog = newSourceName;
+                            });
+                          }
+                        } else {
+                          setState(() {
+                            _selectedSourceForDialog = newValue!;
+                          });
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: const Text('Abbrechen'),
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop();
+                  },
+                ),
+                TextButton(
+                  child: const Text('Speichern'),
+                  onPressed: () {
+                    String newArticleName = _articleNameController.text.trim();
+                    if (newArticleName.isEmpty ||
+                        _selectedCategoryForDialog.isEmpty ||
+                        _selectedSourceForDialog.isEmpty) {
+                      ScaffoldMessenger.of(dialogContext).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Bitte gib einen Artikelnamen, wähle eine Kategorie und Bezugsquelle.',
+                          ),
+                          duration: Duration(milliseconds: 1500),
+                        ),
+                      );
+                      return;
+                    }
+                    // Check for duplicate name, excluding the current article being edited
+                    bool isDuplicate = false;
+                    _categorizedItems.forEach((category, items) {
+                      if (items.any(
+                        (item) =>
+                            item['name'].toString().toLowerCase() ==
+                                newArticleName.toLowerCase() &&
+                            item != articleToEdit,
+                      )) {
+                        // Exclude the article being edited
+                        isDuplicate = true;
+                      }
+                    });
+
+                    if (isDuplicate) {
+                      ScaffoldMessenger.of(dialogContext).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Artikel "$newArticleName" existiert bereits in der Masterliste. Bitte wähle einen anderen Namen.',
+                          ),
+                          duration: Duration(milliseconds: 2000),
+                        ),
+                      );
+                      return;
+                    }
+
+                    // Remove old article if category or name changed
+                    if (articleToEdit['name'] != newArticleName ||
+                        articleToEdit['category'] !=
+                            _selectedCategoryForDialog) {
+                      _categorizedItems[articleToEdit['category']]?.removeWhere(
+                        (item) => item == articleToEdit,
+                      );
+                      if (_categorizedItems[articleToEdit['category']]
+                              ?.isEmpty ??
+                          false) {
+                        _categorizedItems.remove(articleToEdit['category']);
+                      }
+                    }
+
+                    // Update article details
+                    articleToEdit['name'] = newArticleName;
+                    articleToEdit['category'] = _selectedCategoryForDialog;
+                    articleToEdit['source'] = _selectedSourceForDialog;
+
+                    // Add to new category if category changed
+                    if (!_categorizedItems.containsKey(
+                      _selectedCategoryForDialog,
+                    )) {
+                      _categorizedItems[_selectedCategoryForDialog] = [];
+                    }
+                    // Only add if it's not already in the list (e.g., if only source changed)
+                    if (!_categorizedItems[_selectedCategoryForDialog]!
+                        .contains(articleToEdit)) {
+                      _categorizedItems[_selectedCategoryForDialog]!.add(
+                        articleToEdit,
+                      );
+                    }
+
+                    widget
+                        .onCategorizedItemsUpdated(); // Notify HomeScreen to save
+
+                    ScaffoldMessenger.of(dialogContext).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Artikel "$newArticleName" aktualisiert.',
+                        ),
+                        duration: Duration(milliseconds: 1000),
+                      ),
+                    );
+                    Navigator.of(
+                      dialogContext,
+                    ).pop(); // Close the edit article dialog
+                    this.setState(() {}); // Refresh the ArticleManagementScreen
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Group and sort articles for display
@@ -3403,39 +3780,155 @@ class _ArticleManagementScreenState extends State<ArticleManagementScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                      padding: const EdgeInsets.fromLTRB(
+                        16,
+                        8,
+                        16,
+                        4,
+                      ), // Padding zurückgesetzt
                       child: Text(
                         categoryName,
                         style: TextStyle(
-                          fontSize: 20,
+                          fontSize:
+                              14.4, // Font-Größe der Kategorienüberschrift auf 80% (18 * 0.8)
                           fontWeight: FontWeight.bold,
                           color: categoryColor,
                         ),
                       ),
                     ),
                     ...articles.map((article) {
-                      return Card(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
+                      return Dismissible(
+                        key: Key(
+                          article['name']! + article['category']!,
+                        ), // Unique key for Dismissible
+                        direction:
+                            DismissDirection.endToStart, // Swipe to delete
+                        background: Container(
+                          color: Colors.red,
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: const Icon(
+                            Icons.delete,
+                            color: Colors.white,
+                            size: 22.5,
+                          ),
                         ),
-                        elevation: 2,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(4),
-                          side: BorderSide(color: categoryColor, width: 2.0),
-                        ),
-                        child: ListTile(
-                          title: Text(
-                            article['name']!,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                        confirmDismiss: (direction) async {
+                          if (direction == DismissDirection.endToStart) {
+                            final bool? confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (BuildContext context) {
+                                return AlertDialog(
+                                  title: const Text('Artikel löschen?'),
+                                  content: Text(
+                                    'Möchtest du den Artikel "${article['name']}" wirklich löschen?',
+                                  ),
+                                  actions: <Widget>[
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.of(context).pop(false),
+                                      child: const Text('Abbrechen'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.of(context).pop(true),
+                                      child: const Text(
+                                        'Löschen',
+                                        style: TextStyle(color: Colors.red),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                            return confirm ?? false;
+                          }
+                          return false; // Should not happen for other directions
+                        },
+                        onDismissed: (direction) {
+                          if (direction == DismissDirection.endToStart) {
+                            setState(() {
+                              _categorizedItems[categoryName]?.removeWhere(
+                                (item) => item == article,
+                              );
+                              // Remove category if it becomes empty after deletion
+                              if (_categorizedItems[categoryName]?.isEmpty ??
+                                  false) {
+                                _categorizedItems.remove(categoryName);
+                                sortedCategories.remove(
+                                  categoryName,
+                                ); // Update sorted categories list
+                              }
+                              widget
+                                  .onCategorizedItemsUpdated(); // Save changes
+                            });
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                duration: const Duration(milliseconds: 500),
+                                content: Text(
+                                  'Artikel "${article['name']}" gelöscht.',
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                        child: Card(
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 2.0,
+                          ), // Vertical margin set to 2.0
+                          elevation: 1, // Elevation reduziert
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(4),
+                            side: BorderSide(
+                              color: categoryColor,
+                              width: 1.5,
+                            ), // Rahmenbreite reduziert
+                          ),
+                          child: InkWell(
+                            // Add InkWell to make the card tappable
+                            onTap: () {
+                              _showEditArticleDialog(
+                                article,
+                              ); // Call edit dialog on tap
+                            },
+                            child: Padding(
+                              // Add Padding around the custom content
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 0.5,
+                              ), // Vertical padding halbiert
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize
+                                          .min, // Make column take minimum vertical space
+                                      children: [
+                                        Text(
+                                          article['name']!,
+                                          style: const TextStyle(
+                                            fontSize: 15.4,
+                                            fontWeight: FontWeight.bold,
+                                          ), // Schriftgröße auf 10% größer (14 * 1.1)
+                                        ),
+                                        Text(
+                                          'Bezugsquelle: ${article['source'] ?? 'Ohne'}',
+                                          style: const TextStyle(
+                                            fontSize: 10.8,
+                                            color: Colors.grey,
+                                          ), // Schriftgröße auf 20% größer (9 * 1.2)
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  // Edit icon (rechtsbündig) - REMOVED, functionality moved to onTap
+                                ],
+                              ),
                             ),
                           ),
-                          subtitle: Text(
-                            'Bezugsquelle: ${article['source'] ?? 'Ohne'}',
-                          ),
-                          // No delete/edit for now, as per the refined plan
                         ),
                       );
                     }).toList(),
@@ -3449,7 +3942,11 @@ class _ArticleManagementScreenState extends State<ArticleManagementScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             IconButton(
-              icon: const Icon(Icons.add, color: Colors.white, size: 30),
+              icon: const Icon(
+                Icons.add,
+                color: Colors.white,
+                size: 21,
+              ), // Größe auf 75% reduziert
               onPressed: _showAddArticleDialog,
               tooltip: 'Neuen Artikel zur Masterliste hinzufügen',
             ),
