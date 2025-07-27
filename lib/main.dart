@@ -942,6 +942,32 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // Methode zum Navigieren durch die Listen per Swipe
+  void _navigateThroughLists(DragEndDetails details) {
+    if (_allShoppingLists.isEmpty)
+      return; // Nichts zu tun, wenn keine Listen vorhanden sind
+
+    List<String> listNames = _allShoppingLists.keys.toList();
+    int currentIndex = listNames.indexOf(_currentListName);
+
+    if (currentIndex == -1) {
+      // Sollte nicht passieren, aber zur Sicherheit
+      return;
+    }
+
+    setState(() {
+      if (details.primaryVelocity! < 0) {
+        // Swipe von rechts nach links (nächste Liste)
+        currentIndex = (currentIndex + 1) % listNames.length;
+      } else if (details.primaryVelocity! > 0) {
+        // Swipe von links nach rechts (vorherige Liste)
+        currentIndex = (currentIndex - 1 + listNames.length) % listNames.length;
+      }
+      _currentListName = listNames[currentIndex];
+      _saveData(); // Speichere den neuen aktuellen Listennamen
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     // Zeige einen Ladeindikator, wenn die Daten noch nicht geladen sind
@@ -1268,6 +1294,7 @@ class _HomeScreenState extends State<HomeScreen> {
             // After returning from ListManagementScreen, re-initialize data to ensure currentListName is updated
             _initializeData();
           },
+          onHorizontalDragEnd: _navigateThroughLists, // Added swipe gesture
           child: Text(
             _currentListName,
           ), // Zeigt den Namen der aktuellen Liste an
