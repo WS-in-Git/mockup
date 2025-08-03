@@ -1575,7 +1575,7 @@ class _SelectionScreenState extends State<SelectionScreen>
     with SingleTickerProviderStateMixin {
   // _categorizedItems ist jetzt global definiert und wird nicht mehr hier verwaltet.
 
-  late String _selectedCategory;
+  String? _selectedCategory; // Changed to nullable
   late ScrollController _scrollController;
   late AnimationController _animationController;
   late Animation<Color?> _colorAnimation;
@@ -1653,7 +1653,9 @@ class _SelectionScreenState extends State<SelectionScreen>
       final List<String> scrollableCategories = _categorizedItems.keys
           .where((k) => k != 'Alle')
           .toList();
-      final int selectedIndex = scrollableCategories.indexOf(_selectedCategory);
+      final int selectedIndex = scrollableCategories.indexOf(
+        _selectedCategory!,
+      ); // Use ! here as it's checked above
 
       if (selectedIndex != -1) {
         const double estimatedButtonWidth = 120.0;
@@ -2460,8 +2462,8 @@ class _SourceSelectionBottomSheet extends StatefulWidget {
 
 class __SourceSelectionBottomSheetState
     extends State<_SourceSelectionBottomSheet> {
-  late List<String> _currentSources;
-  late String _selectedSource;
+  List<String> _currentSources = []; // Changed to non-late
+  String? _selectedSource; // Changed to nullable
 
   @override
   void initState() {
@@ -2585,9 +2587,9 @@ class __SourceSelectionBottomSheetState
                       source,
                       style: const TextStyle(fontSize: 11),
                     ), // Schriftgröße auf 75% reduziert
-                    trailing: _selectedSource == source
+                    trailing: (_selectedSource ?? '') == source
                         ? const Icon(Icons.check, color: Colors.cyan, size: 15)
-                        : null, // Größe auf 75% reduziert
+                        : null, // Added ?? ''
                     onTap: () {
                       widget.onSourceSelected(
                         source,
